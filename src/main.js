@@ -2,14 +2,16 @@
 
 import * as THREE from 'three';
 
-import { scene, camera, renderer } from './setup.js';
+import { scene, camera, renderer, sun, ambient } from './setup.js';
 import './world.js'; // side-effect: populates the environment
 
 import { state }              from './state.js';
 import { keys }               from './input.js';
 import { ui, updateTitle, setHint, setExhibit, setPizzaCount, setIceCreamCount, setPuddleCount } from './ui.js';
 import { physics, applyCollisions, colliders } from './physics.js';
-import { puddles, clouds, npcs as outdoorNpcs, balloon } from './world.js';
+import {
+  puddles, clouds, npcs as outdoorNpcs, balloon, sunVisual, moonVisual, stars, train, party,
+} from './world.js';
 import * as audio             from './audio.js';
 import {
   mount, dismount, activeChar, activeRig, activeMode, tryMountNearby, refreshAllSeats,
@@ -85,6 +87,87 @@ mount('papa',  state.car);
 camera.position.set(0, 4, -85);
 camera.lookAt(0, 1, -78);
 
+// ---- Day/night cycle ----
+const DAY_CYCLE_S = 120; // 2 minutes for a full day
+let dayTime = 0.5;       // 0 = midnight, 0.5 = noon
+const dayColor   = new THREE.Color(0x87ceeb);
+const nightColor = new THREE.Color(0x1a2540);
+const fogDayColor   = new THREE.Color(0xb3e0ff);
+const fogNightColor = new THREE.Color(0x223150);
+const tmpColor = new THREE.Color();
+
+function updateDayNight(dt) {
+  dayTime = (dayTime + dt / DAY_CYCLE_S) % 1;
+  const angle = dayTime * Math.PI * 2 - Math.PI / 2;
+  const elev  = Math.sin(angle);
+  const dayness = Math.max(0, elev);
+  // Sun (kept above horizon for shadow camera so shadows don't break)
+  sun.position.set(40 * Math.cos(angle), Math.max(8, 70 * elev), 30);
+  sun.intensity = dayness * 0.9;
+  ambient.intensity = 0.25 + dayness * 0.55;
+  const t = Math.pow((elev + 1) / 2, 0.7); // bias slightly toward day
+  scene.background.copy(tmpColor.copy(nightColor).lerp(dayColor, t));
+  scene.fog.color.copy(tmpColor.copy(fogNightColor).lerp(fogDayColor, t));
+  // Sun visual
+  sunVisual.position.x = 60 * Math.cos(angle);
+  sunVisual.position.y = 80 * elev;
+  sunVisual.visible = elev > -0.2;
+  // Moon (opposite)
+  moonVisual.position.x = -60 * Math.cos(angle);
+  moonVisual.position.y = -80 * elev;
+  moonVisual.visible = elev < 0.2;
+  // Stars
+  stars.visible = elev < 0.1;
+}
+
+// ---- Train animation ----
+function updateTrain(dt) {
+  train.userData.angle -= dt * 0.35; // counterclockwise (when viewed from above)
+  const a = train.userData.angle;
+  const r = train.userData.radius;
+  const c = train.userData.center;
+  train.position.x = c.x + Math.cos(a) * r;
+  train.position.z = c.z + Math.sin(a) * r;
+  train.rotation.y = Math.PI - a;
+  // animated steam
+  const s = train.userData.smoke;
+  if (s) {
+    s.scale.setScalar(0.7 + Math.sin(performance.now() * 0.005) * 0.25);
+    s.material.opacity = 0.35 + Math.sin(performance.now() * 0.005) * 0.3;
+  }
+}
+
+// ---- Rain ----
+const rainGroup = new THREE.Group();
+const rainMat = new THREE.MeshBasicMaterial({ color: 0xa3d8f7, transparent: true, opacity: 0.6 });
+const dropGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.4, 4);
+for (let i = 0; i < 80; i++) {
+  const drop = new THREE.Mesh(dropGeo, rainMat);
+  drop.position.set(
+    (Math.random() - 0.5) * 30,
+    Math.random() * 15 + 5,
+    (Math.random() - 0.5) * 30,
+  );
+  rainGroup.add(drop);
+}
+rainGroup.visible = false;
+scene.add(rainGroup);
+let rainOn = false;
+
+function updateRain(dt, rig) {
+  if (!rainOn) return;
+  rainGroup.position.x = rig.position.x;
+  rainGroup.position.z = rig.position.z;
+  for (const drop of rainGroup.children) {
+    drop.position.y -= 18 * dt;
+    if (drop.position.y < 0) {
+      drop.position.y = 15 + Math.random() * 5;
+      drop.position.x = (Math.random() - 0.5) * 30;
+      drop.position.z = (Math.random() - 0.5) * 30;
+    }
+  }
+}
+
 // ---- Camera control (mouse drag + wheel + R to recenter) ----
 const camOffset = { yaw: 0, pitch: 0, distMult: 1 };
 let mouseDown = false, lastMx = 0, lastMy = 0;
@@ -139,7 +222,7 @@ ui.startOverlay.querySelectorAll('.choice').forEach(btn => {
 });
 
 // ---- Edge-triggered key handling ----
-let lastF = false, lastC = false, lastSpace = false, lastE = false, lastM = false, lastR = false;
+let lastF = false, lastC = false, lastSpace = false, lastE = false, lastM = false, lastR = false, lastP = false;
 
 // Returns 'pizza' | 'icecream' | null based on the closest food source
 // within 5m of the active character on foot.
@@ -250,6 +333,12 @@ function checkEdges() {
     camOffset.distMult = 1;
   }
   lastR = !!keys['KeyR'];
+
+  if (keys['KeyP'] && !lastP) {
+    rainOn = !rainOn;
+    rainGroup.visible = rainOn;
+  }
+  lastP = !!keys['KeyP'];
 }
 
 function animatePedal(ch, phase) {
@@ -415,6 +504,25 @@ function tick() {
   balloon.position.y = 28 + Math.sin(performance.now() * 0.0006) * 1.5;
   if (balloon.position.x > 110) balloon.position.x = -110;
 
+  // ---- day/night cycle ----
+  updateDayNight(dt);
+
+  // ---- train ----
+  updateTrain(dt);
+
+  // ---- rain ----
+  updateRain(dt, rig);
+
+  // ---- party balloons + flames ----
+  for (const b of party.userData.balloons) {
+    const wave = Math.sin(performance.now() * 0.001 + b.userData.phase) * 0.25;
+    b.position.y = b.userData.baseY + wave;
+    b.userData.string.position.y = b.position.y - 0.85;
+  }
+  for (const f of party.userData.flames) {
+    f.scale.setScalar(0.85 + Math.sin(performance.now() * 0.012 + f.position.x * 100) * 0.25);
+  }
+
   // ---- clouds drift ----
   for (const c of clouds) {
     c.position.x += dt * 0.6;
@@ -432,6 +540,9 @@ function tick() {
   }
   if (state.school.userData.flag) {
     state.school.userData.flag.rotation.y = Math.sin(performance.now() * 0.003) * 0.25;
+  }
+  if (state.school.userData.carousel) {
+    state.school.userData.carousel.rotation.y += dt * 0.5;
   }
 
   // ---- enterable buildings: roof toggle, door open, exhibit panel ----

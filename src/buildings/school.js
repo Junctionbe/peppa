@@ -226,6 +226,113 @@ export function createSchool(x, z) {
   ramp.position.set(0.6, 1.2, 1.4); ramp.rotation.x = -0.45; slide.add(ramp);
   slide.position.set(-W/2 - 3, 0, -D/2 - 2); s.add(slide);
 
+  // Seesaw (centered between swing & slide, in front of school)
+  const seesaw = new THREE.Group();
+  const seesawPivot = new THREE.Mesh(
+    new THREE.BoxGeometry(0.3, 0.5, 0.3),
+    new THREE.MeshLambertMaterial({ color: 0x6d4c41 }),
+  );
+  seesawPivot.position.y = 0.25;
+  seesawPivot.castShadow = true;
+  seesaw.add(seesawPivot);
+  const plank = new THREE.Mesh(
+    new THREE.BoxGeometry(3.2, 0.1, 0.4),
+    new THREE.MeshLambertMaterial({ color: 0xff80ab }),
+  );
+  plank.position.y = 0.55;
+  plank.rotation.z = 0.12;
+  plank.castShadow = true;
+  seesaw.add(plank);
+  for (const sx of [-1.4, 1.4]) {
+    const seat = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4, 0.05, 0.35),
+      matBlack,
+    );
+    seat.position.set(sx, 0.62 + sx * 0.12, 0);
+    seesaw.add(seat);
+    const handle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.03, 0.4, 6),
+      new THREE.MeshLambertMaterial({ color: 0xffeb3b }),
+    );
+    handle.position.set(sx * 0.95, 0.85 + sx * 0.12, 0);
+    seesaw.add(handle);
+  }
+  seesaw.position.set(0, 0, -D/2 - 4);
+  s.add(seesaw);
+
+  // Sandbox (east of door)
+  const sandbox = new THREE.Group();
+  const sandFloor = new THREE.Mesh(
+    new THREE.BoxGeometry(2, 0.06, 2),
+    new THREE.MeshLambertMaterial({ color: 0xffe082 }),
+  );
+  sandFloor.position.y = 0.05;
+  sandbox.add(sandFloor);
+  const woodMat = new THREE.MeshLambertMaterial({ color: 0x6d4c41 });
+  for (const [bx, bz, bw, bd] of [[-1, 0, 0.15, 2], [1, 0, 0.15, 2], [0, -1, 2, 0.15], [0, 1, 2, 0.15]]) {
+    const frame = new THREE.Mesh(
+      new THREE.BoxGeometry(bw, 0.2, bd),
+      woodMat,
+    );
+    frame.position.set(bx, 0.13, bz);
+    frame.castShadow = true;
+    sandbox.add(frame);
+  }
+  // shovel
+  const shovelHandle = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.025, 0.025, 0.5, 6),
+    new THREE.MeshLambertMaterial({ color: 0x8d6e63 }),
+  );
+  shovelHandle.position.set(0.3, 0.18, 0.3);
+  shovelHandle.rotation.x = 0.6;
+  sandbox.add(shovelHandle);
+  const shovelBlade = new THREE.Mesh(
+    new THREE.BoxGeometry(0.18, 0.04, 0.1),
+    new THREE.MeshLambertMaterial({ color: 0xc62828 }),
+  );
+  shovelBlade.position.set(0.3, 0.06, 0.55);
+  sandbox.add(shovelBlade);
+  // small bucket
+  const bucket = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.18, 0.14, 0.3, 12),
+    new THREE.MeshLambertMaterial({ color: 0x42a5f5 }),
+  );
+  bucket.position.set(-0.4, 0.2, -0.3);
+  bucket.castShadow = true;
+  sandbox.add(bucket);
+  sandbox.position.set(W/2 + 6, 0, -D/2 - 4);
+  s.add(sandbox);
+
+  // Merry-go-round (small carousel) - west of slide
+  const carousel = new THREE.Group();
+  const carBase = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.2, 1.2, 0.15, 16),
+    new THREE.MeshLambertMaterial({ color: 0xab47bc }),
+  );
+  carBase.position.y = 0.4;
+  carBase.castShadow = true;
+  carousel.add(carBase);
+  const carPole = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.06, 0.06, 1.2, 8),
+    matBlack,
+  );
+  carPole.position.y = 1;
+  carousel.add(carPole);
+  // 4 colored handles around the edge
+  const handleColors = [0xff5252, 0xffeb3b, 0x4fc3f7, 0x66bb6a];
+  for (let i = 0; i < 4; i++) {
+    const ang = (i / 4) * Math.PI * 2;
+    const handle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.04, 0.04, 0.7, 6),
+      new THREE.MeshLambertMaterial({ color: handleColors[i] }),
+    );
+    handle.position.set(Math.cos(ang) * 1.05, 0.85, Math.sin(ang) * 1.05);
+    carousel.add(handle);
+  }
+  carousel.position.set(-W/2 - 7, 0, -D/2 - 4);
+  s.add(carousel);
+  s.userData.carousel = carousel;
+
   // Place + colliders (5 wall segments: north, south-west, south-east, east, west)
   s.position.set(x, 0, z);
   colliders.push({ minX: x - W/2,    maxX: x + W/2,     minZ: z + D/2 - T,   maxZ: z + D/2 });

@@ -60,13 +60,37 @@ addHill( 60, -180, 40, 0x4fa030);
 addHill(-130, 100, 35, 0x5cb036);
 addHill( 120,  60, 28, 0x66bf42);
 
-// ---- Sun visual ----
-const sunVisual = new THREE.Mesh(
+// ---- Sun visual (animated by day/night cycle in main.js) ----
+export const sunVisual = new THREE.Mesh(
   new THREE.SphereGeometry(6, 16, 16),
   new THREE.MeshBasicMaterial({ color: 0xffeb3b }),
 );
 sunVisual.position.set(60, 80, -100);
 scene.add(sunVisual);
+
+// Moon (visible at night)
+export const moonVisual = new THREE.Mesh(
+  new THREE.SphereGeometry(4, 16, 16),
+  new THREE.MeshBasicMaterial({ color: 0xeeeeee }),
+);
+moonVisual.position.set(-60, 80, 100);
+moonVisual.visible = false;
+scene.add(moonVisual);
+
+// Stars (a sphere of small white dots, visible only at night)
+export const stars = new THREE.Group();
+const starMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+for (let i = 0; i < 80; i++) {
+  const s = new THREE.Mesh(new THREE.SphereGeometry(0.4, 4, 4), starMat);
+  // place on hemisphere above
+  const a = Math.random() * Math.PI * 2;
+  const b = Math.random() * Math.PI / 2;
+  const r = 200;
+  s.position.set(Math.cos(a) * Math.cos(b) * r, Math.sin(b) * r * 0.6 + 30, Math.sin(a) * Math.cos(b) * r);
+  stars.add(s);
+}
+stars.visible = false;
+scene.add(stars);
 
 // ---- Clouds ----
 export const clouds = [];
@@ -102,10 +126,14 @@ function isTreeSpotFree(x, z) {
   if (x >   3 && x < 23  && Math.abs(z - 50) < 3) return false;   // hotel path
   if (x >   6 && x < 14  && z > -25 && z < -15) return false;     // food truck
   if (x > -10 && x < 0   && z > 73 && z < 78)   return false;     // ice cream stand
-  // big circle around the lake center (-55, 10) radius ~10
   const ldx = x - (-55), ldz = z - 10;
   if (ldx * ldx + ldz * ldz < 100) return false;                   // lake
   if (x > -32 && x < -22 && z < -72 && z > -82) return false;     // garden
+  // train track ring (center 60,0 radius 22 ± 2)
+  const trdx = x - 60, trdz = z;
+  const trd = Math.sqrt(trdx * trdx + trdz * trdz);
+  if (trd > 19 && trd < 25) return false;                          // train track
+  if (x > -34 && x < -25 && z > 86 && z < 95) return false;       // birthday party
   return true;
 }
 let placed = 0;
@@ -424,3 +452,204 @@ scene.add(granny);
 npcs.push(granny);
 granny.userData.label = '👵 Granny Pig : « Tu veux un petit gâteau ma chérie ? »';
 granny.userData.zoneRadius = 3;
+
+// ---- Train on a circular track (far east) ----
+const TRACK_CX = 60, TRACK_CZ = 0, TRACK_R = 22;
+const railMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+const tieMat = new THREE.MeshLambertMaterial({ color: 0x6d4c41 });
+function addRail(radius) {
+  const r = new THREE.Mesh(
+    new THREE.TorusGeometry(radius, 0.06, 6, 60),
+    railMat,
+  );
+  r.rotation.x = Math.PI / 2;
+  r.position.set(TRACK_CX, 0.1, TRACK_CZ);
+  scene.add(r);
+}
+addRail(TRACK_R + 0.4);
+addRail(TRACK_R - 0.4);
+// wooden ties across rails
+for (let i = 0; i < 32; i++) {
+  const ang = (i / 32) * Math.PI * 2;
+  const tie = new THREE.Mesh(
+    new THREE.BoxGeometry(1.2, 0.08, 0.3),
+    tieMat,
+  );
+  tie.position.set(
+    TRACK_CX + Math.cos(ang) * TRACK_R,
+    0.06,
+    TRACK_CZ + Math.sin(ang) * TRACK_R,
+  );
+  tie.rotation.y = -ang;
+  scene.add(tie);
+}
+
+function createTrain() {
+  const t = new THREE.Group();
+  // locomotive body
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(1.2, 1.0, 2.5),
+    new THREE.MeshLambertMaterial({ color: 0xc62828 }),
+  );
+  body.position.y = 0.75; body.castShadow = true; t.add(body);
+  // cabin (back)
+  const cabin = new THREE.Mesh(
+    new THREE.BoxGeometry(1.2, 0.7, 1),
+    new THREE.MeshLambertMaterial({ color: 0xb71c1c }),
+  );
+  cabin.position.set(0, 1.6, -0.7); cabin.castShadow = true; t.add(cabin);
+  // cabin window
+  const win = new THREE.Mesh(
+    new THREE.BoxGeometry(0.7, 0.4, 0.05),
+    new THREE.MeshLambertMaterial({ color: 0xb3e5fc }),
+  );
+  win.position.set(0, 1.7, -0.2); t.add(win);
+  // chimney (front)
+  const chimney = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.18, 0.22, 0.5, 8), matBlack,
+  );
+  chimney.position.set(0, 1.5, 0.8); t.add(chimney);
+  // top of chimney (wider rim)
+  const chimneyTop = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.25, 0.18, 0.1, 8), matBlack,
+  );
+  chimneyTop.position.set(0, 1.78, 0.8); t.add(chimneyTop);
+  // 4 wheels
+  for (const [x, z] of [[-0.55, 0.7], [0.55, 0.7], [-0.55, -0.7], [0.55, -0.7]]) {
+    const w = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.25, 0.25, 0.16, 12), matBlack,
+    );
+    w.rotation.z = Math.PI / 2;
+    w.position.set(x, 0.25, z); t.add(w);
+  }
+  // headlight
+  const headlight = new THREE.Mesh(
+    new THREE.SphereGeometry(0.15, 10, 8),
+    new THREE.MeshBasicMaterial({ color: 0xfff59d }),
+  );
+  headlight.position.set(0, 0.75, 1.27);
+  t.add(headlight);
+  // wagon (yellow) attached behind
+  const wagon = new THREE.Mesh(
+    new THREE.BoxGeometry(1.0, 0.7, 1.8),
+    new THREE.MeshLambertMaterial({ color: 0xfbc02d }),
+  );
+  wagon.position.set(0, 0.6, -2.5); wagon.castShadow = true; t.add(wagon);
+  // wagon back
+  const wagonBack = new THREE.Mesh(
+    new THREE.BoxGeometry(1.0, 0.4, 0.1),
+    new THREE.MeshLambertMaterial({ color: 0xb71c1c }),
+  );
+  wagonBack.position.set(0, 1.0, -3.4); t.add(wagonBack);
+  for (const [x, z] of [[-0.45, -1.9], [0.45, -1.9], [-0.45, -3.1], [0.45, -3.1]]) {
+    const w = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.22, 0.22, 0.14, 10), matBlack,
+    );
+    w.rotation.z = Math.PI / 2;
+    w.position.set(x, 0.22, z); t.add(w);
+  }
+  // smoke puffs (will animate)
+  const smoke = new THREE.Mesh(
+    new THREE.SphereGeometry(0.3, 8, 6),
+    new THREE.MeshLambertMaterial({ color: 0xeeeeee, transparent: true, opacity: 0.7 }),
+  );
+  smoke.position.set(0, 2.2, 0.8);
+  t.add(smoke);
+  t.userData.smoke = smoke;
+  return t;
+}
+export const train = createTrain();
+train.userData.angle = 0;
+train.userData.radius = TRACK_R;
+train.userData.center = { x: TRACK_CX, z: TRACK_CZ };
+scene.add(train);
+
+// ---- Birthday party (cake on table + floating balloons) ----
+const PARTY_X = -29, PARTY_Z = 88;
+function createParty() {
+  const p = new THREE.Group();
+  // table
+  const table = new THREE.Mesh(
+    new THREE.CylinderGeometry(1, 0.85, 1, 16),
+    new THREE.MeshLambertMaterial({ color: 0xa1887f }),
+  );
+  table.position.y = 0.5; table.castShadow = true; p.add(table);
+  // tablecloth (slightly larger flat disc on top)
+  const cloth = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.05, 1.05, 0.04, 16),
+    new THREE.MeshLambertMaterial({ color: 0xff80ab }),
+  );
+  cloth.position.y = 1.02; p.add(cloth);
+  // cake — three layers
+  const layer1 = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.55, 0.55, 0.35, 16),
+    new THREE.MeshLambertMaterial({ color: 0xfff5d0 }),
+  );
+  layer1.position.y = 1.22; p.add(layer1);
+  const layer2 = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.4, 0.4, 0.25, 16),
+    new THREE.MeshLambertMaterial({ color: 0xff80ab }),
+  );
+  layer2.position.y = 1.52; p.add(layer2);
+  const layer3 = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.25, 0.25, 0.18, 16),
+    new THREE.MeshLambertMaterial({ color: 0xfff5d0 }),
+  );
+  layer3.position.y = 1.74; p.add(layer3);
+  // candles (5)
+  const flames = [];
+  for (let i = 0; i < 5; i++) {
+    const ang = (i / 5) * Math.PI * 2;
+    const candle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.025, 0.025, 0.18, 6),
+      new THREE.MeshLambertMaterial({ color: 0xfff59d }),
+    );
+    candle.position.set(Math.cos(ang) * 0.13, 1.92, Math.sin(ang) * 0.13);
+    p.add(candle);
+    const flame = new THREE.Mesh(
+      new THREE.SphereGeometry(0.04, 6, 5),
+      new THREE.MeshBasicMaterial({ color: 0xff5722 }),
+    );
+    flame.position.set(Math.cos(ang) * 0.13, 2.05, Math.sin(ang) * 0.13);
+    p.add(flame);
+    flames.push(flame);
+  }
+  p.userData.flames = flames;
+  // balloons floating around
+  const balloonColors = [0xff5252, 0xffeb3b, 0x4fc3f7, 0xab47bc, 0x66bb6a, 0xff9800];
+  const balloons = [];
+  for (let i = 0; i < 6; i++) {
+    const balloon = new THREE.Mesh(
+      new THREE.SphereGeometry(0.32, 12, 10),
+      new THREE.MeshLambertMaterial({ color: balloonColors[i] }),
+    );
+    const ang = (i / 6) * Math.PI * 2;
+    const r = 1.6 + Math.random() * 0.5;
+    const baseY = 2.4 + Math.random() * 1.2;
+    balloon.position.set(Math.cos(ang) * r, baseY, Math.sin(ang) * r);
+    balloon.userData.baseY = baseY;
+    balloon.userData.phase = Math.random() * Math.PI * 2;
+    p.add(balloon);
+    balloons.push(balloon);
+    // string
+    const string = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.005, 0.005, 1.4, 4), matBlack,
+    );
+    string.position.set(balloon.position.x, baseY - 0.85, balloon.position.z);
+    p.add(string);
+    balloon.userData.string = string;
+  }
+  p.userData.balloons = balloons;
+  return p;
+}
+export const party = createParty();
+party.position.set(PARTY_X, 0, PARTY_Z);
+scene.add(party);
+
+// Party label zone
+const partyZone = new THREE.Object3D();
+partyZone.position.set(PARTY_X, 0, PARTY_Z);
+partyZone.userData.label = '🎂 Joyeux anniversaire ! 🎉';
+partyZone.userData.zoneRadius = 4;
+scene.add(partyZone);
+npcs.push(partyZone);  // reuse npcs array for outdoor labels (no lookAt issue, it's an Object3D)

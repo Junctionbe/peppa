@@ -19,8 +19,9 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-scene.add(new THREE.AmbientLight(0xfff0d8, 0.7));
-const sun = new THREE.DirectionalLight(0xfff5d0, 1.0);
+export const ambient = new THREE.AmbientLight(0xfff0d8, 0.7);
+scene.add(ambient);
+export const sun = new THREE.DirectionalLight(0xfff5d0, 1.0);
 sun.position.set(40, 70, 30);
 sun.castShadow = true;
 sun.shadow.camera.left = -110; sun.shadow.camera.right = 110;
