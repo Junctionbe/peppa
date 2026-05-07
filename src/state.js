@@ -19,10 +19,15 @@ export const state = {
   currentChar: 'peppa',           // 'peppa' | 'papa'
   mounts: { peppa: null, papa: null },  // each: null (on foot) | bike | car
 
-  // pizza
+  // food in hand (pizza or ice cream)
   pizzasEaten: 0,
-  pizzaTimer: 0,    // seconds remaining for the held pizza
-  pizzaMesh: null,  // THREE mesh while a pizza is being held/eaten
+  icecreamsEaten: 0,
+  foodTimer: 0,    // seconds remaining for the held food
+  foodMesh: null,  // THREE mesh while a food is being held/eaten
+
+  // puddle jumping
+  puddleJumps: 0,
+  splashes: [],
 
   // wired by main.js
   peppa: null,
@@ -34,4 +39,5 @@ export const state = {
   house: null,
   hotel: null,
   foodTruck: null,
+  iceCreamStand: null,
 };

@@ -7,24 +7,25 @@ import './world.js'; // side-effect: populates the environment
 
 import { state }              from './state.js';
 import { keys }               from './input.js';
-import { ui, updateTitle, setHint, setExhibit, setPizzaCount } from './ui.js';
+import { ui, updateTitle, setHint, setExhibit, setPizzaCount, setIceCreamCount, setPuddleCount } from './ui.js';
 import { physics, applyCollisions, colliders } from './physics.js';
-import { puddles, clouds, npcs as outdoorNpcs } from './world.js';
+import { puddles, clouds, npcs as outdoorNpcs, balloon } from './world.js';
 import * as audio             from './audio.js';
 import {
   mount, dismount, activeChar, activeRig, activeMode, tryMountNearby, refreshAllSeats,
 } from './mount.js';
 
-import { createPeppa }     from './actors/peppa.js';
-import { createPapa }      from './actors/papa.js';
-import { createBike }      from './actors/bike.js';
-import { createCar }       from './actors/car.js';
-import { createPizza }     from './actors/pizza.js';
-import { createFoodTruck } from './actors/foodtruck.js';
-import { createHouse }     from './buildings/house.js';
-import { createSchool }    from './buildings/school.js';
-import { createMuseum }    from './buildings/museum.js';
-import { createHotel }     from './buildings/hotel.js';
+import { createPeppa }                   from './actors/peppa.js';
+import { createPapa }                    from './actors/papa.js';
+import { createBike }                    from './actors/bike.js';
+import { createCar }                     from './actors/car.js';
+import { createPizza }                   from './actors/pizza.js';
+import { createFoodTruck }               from './actors/foodtruck.js';
+import { createIceCreamStand, createIceCream } from './actors/icecreamstand.js';
+import { createHouse }                   from './buildings/house.js';
+import { createSchool }                  from './buildings/school.js';
+import { createMuseum }                  from './buildings/museum.js';
+import { createHotel }                   from './buildings/hotel.js';
 
 // ---- Build characters and vehicles ----
 state.peppa = createPeppa();
@@ -55,13 +56,22 @@ for (const b of enterables) {
   truck.rotation.y = Math.PI;             // service window faces west (toward road)
   scene.add(truck);
   state.foodTruck = truck;
-  // Vendor sheep on the road-side of the truck
   vendor.position.set(10.4, 0, -20);
   vendor.rotation.y = -Math.PI / 2;
   scene.add(vendor);
   allNpcs.push(vendor);
-  // Collider so vehicles can't drive through the truck
   colliders.push({ minX: 10.75, maxX: 13.25, minZ: -22, maxZ: -18 });
+}
+
+// ---- Ice cream stand ----
+{
+  const stand = createIceCreamStand();
+  stand.position.set(-5, 0, 75);
+  stand.rotation.y = Math.PI / 2; // counter facing east (toward road)
+  scene.add(stand);
+  state.iceCreamStand = stand;
+  // Collider (after rotation: depth becomes width)
+  colliders.push({ minX: -5.8, maxX: -4.2, minZ: 73.7, maxZ: 76.3 });
 }
 
 // ---- Initial placement ----
@@ -79,6 +89,7 @@ camera.lookAt(0, 1, -78);
 ui.startOverlay.querySelectorAll('.choice').forEach(btn => {
   btn.addEventListener('click', () => {
     audio.resumeAudio();
+    audio.startMusic();
     state.currentChar = btn.dataset.vehicle;
     state.heading = activeRig().rotation.y;
     state.speed = 0;
@@ -88,25 +99,70 @@ ui.startOverlay.querySelectorAll('.choice').forEach(btn => {
 });
 
 // ---- Edge-triggered key handling ----
-let lastF = false, lastC = false, lastSpace = false, lastE = false;
+let lastF = false, lastC = false, lastSpace = false, lastE = false, lastM = false;
 
-function tryEatPizza() {
-  if (activeMode() !== 'foot' || !state.foodTruck) return;
+// Returns 'pizza' | 'icecream' | null based on the closest food source
+// within 5m of the active character on foot.
+function nearestFoodSource() {
+  if (activeMode() !== 'foot') return null;
   const ch = activeChar();
-  const dx = state.foodTruck.position.x - ch.position.x;
-  const dz = state.foodTruck.position.z - ch.position.z;
-  if (dx * dx + dz * dz > 25) return; // > 5m away
-  // Drop any current pizza first
-  if (state.pizzaMesh && state.pizzaMesh.parent) {
-    state.pizzaMesh.parent.remove(state.pizzaMesh);
+  let best = null, bestD = 25;
+  if (state.foodTruck) {
+    const dx = state.foodTruck.position.x - ch.position.x;
+    const dz = state.foodTruck.position.z - ch.position.z;
+    const d = dx * dx + dz * dz;
+    if (d < bestD) { bestD = d; best = 'pizza'; }
   }
-  state.pizzaMesh = createPizza();
-  state.pizzaMesh.position.set(0, 1.4, 0.35);
-  ch.add(state.pizzaMesh);
-  state.pizzaTimer = 2.5;
-  state.pizzasEaten++;
-  setPizzaCount(state.pizzasEaten);
+  if (state.iceCreamStand) {
+    const dx = state.iceCreamStand.position.x - ch.position.x;
+    const dz = state.iceCreamStand.position.z - ch.position.z;
+    const d = dx * dx + dz * dz;
+    if (d < bestD) { bestD = d; best = 'icecream'; }
+  }
+  return best;
+}
+
+function tryEat() {
+  const type = nearestFoodSource();
+  if (!type) return;
+  const ch = activeChar();
+  if (state.foodMesh && state.foodMesh.parent) {
+    state.foodMesh.parent.remove(state.foodMesh);
+  }
+  state.foodMesh = type === 'pizza' ? createPizza() : createIceCream();
+  state.foodMesh.position.set(0, 1.4, 0.35);
+  ch.add(state.foodMesh);
+  state.foodTimer = 2.5;
+  if (type === 'pizza') {
+    state.pizzasEaten++;
+    setPizzaCount(state.pizzasEaten);
+  } else {
+    state.icecreamsEaten++;
+    setIceCreamCount(state.icecreamsEaten);
+  }
   audio.playEat();
+}
+
+function spawnSplashParticles(x, z) {
+  const g = new THREE.Group();
+  for (let i = 0; i < 7; i++) {
+    const ang = (i / 7) * Math.PI * 2 + Math.random() * 0.4;
+    const drop = new THREE.Mesh(
+      new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 6, 5),
+      new THREE.MeshLambertMaterial({ color: 0x6d4c41, transparent: true, opacity: 1 }),
+    );
+    drop.position.set(0, 0.2, 0);
+    drop.userData.vel = {
+      x: Math.cos(ang) * (1.5 + Math.random()),
+      y: 2 + Math.random() * 1.8,
+      z: Math.sin(ang) * (1.5 + Math.random()),
+    };
+    drop.userData.life = 1.0;
+    g.add(drop);
+  }
+  g.position.set(x, 0, z);
+  scene.add(g);
+  state.splashes.push(g);
 }
 
 function checkEdges() {
@@ -142,8 +198,11 @@ function checkEdges() {
   }
   lastC = !!keys['KeyC'];
 
-  if (keys['KeyE'] && !lastE) tryEatPizza();
+  if (keys['KeyE'] && !lastE) tryEat();
   lastE = !!keys['KeyE'];
+
+  if (keys['KeyM'] && !lastM) audio.toggleMusic();
+  lastM = !!keys['KeyM'];
 }
 
 function animatePedal(ch, phase) {
@@ -154,6 +213,7 @@ function animatePedal(ch, phase) {
 // ---- Main loop ----
 const clock = new THREE.Clock();
 const tmpVec = new THREE.Vector3();
+let wasInAir = false; // tracks previous-frame jump state for puddle-jump detection
 
 function tick() {
   const dt = Math.min(clock.getDelta(), 0.05);
@@ -252,28 +312,61 @@ function tick() {
     }
   }
 
-  // ---- pizza eating animation ----
-  if (state.pizzaTimer > 0) {
-    state.pizzaTimer -= dt;
-    if (state.pizzaMesh) {
-      const k = Math.max(0, state.pizzaTimer / 2.5);
-      state.pizzaMesh.scale.setScalar(0.1 + k * 0.9);
-      state.pizzaMesh.rotation.y += dt * 2;
+  // ---- food eating animation (pizza or ice cream) ----
+  if (state.foodTimer > 0) {
+    state.foodTimer -= dt;
+    if (state.foodMesh) {
+      const k = Math.max(0, state.foodTimer / 2.5);
+      state.foodMesh.scale.setScalar(0.1 + k * 0.9);
+      state.foodMesh.rotation.y += dt * 2;
     }
-    if (state.pizzaTimer <= 0 && state.pizzaMesh && state.pizzaMesh.parent) {
-      state.pizzaMesh.parent.remove(state.pizzaMesh);
-      state.pizzaMesh = null;
+    if (state.foodTimer <= 0 && state.foodMesh && state.foodMesh.parent) {
+      state.foodMesh.parent.remove(state.foodMesh);
+      state.foodMesh = null;
     }
   }
 
   // ---- puddle splash ----
   let inPuddle = false;
+  let puddlePos = null;
   for (const p of puddles) {
     const dx = rig.position.x - p.x, dz = rig.position.z - p.z;
-    if (dx * dx + dz * dz < (p.size + 0.4) * (p.size + 0.4)) { inPuddle = true; break; }
+    if (dx * dx + dz * dz < (p.size + 0.4) * (p.size + 0.4)) {
+      inPuddle = true; puddlePos = p; break;
+    }
   }
   if (inPuddle && !state.lastInPuddle && Math.abs(state.speed) > 1.5) audio.playSplash();
+  // Puddle JUMP: just landed in/on a puddle while on foot ⇒ big splash + counter
+  const justLanded = wasInAir && state.jumpY === 0;
+  if (justLanded && inPuddle && mode === 'foot') {
+    state.puddleJumps++;
+    setPuddleCount(state.puddleJumps);
+    audio.playBigSplash();
+    spawnSplashParticles(puddlePos.x, puddlePos.z);
+  }
+  wasInAir = mode === 'foot' && state.jumpY > 0;
   state.lastInPuddle = inPuddle;
+
+  // ---- splash particle physics ----
+  for (let i = state.splashes.length - 1; i >= 0; i--) {
+    const grp = state.splashes[i];
+    let allDead = true;
+    for (const drop of grp.children) {
+      drop.userData.vel.y -= 9 * dt;
+      drop.position.x += drop.userData.vel.x * dt;
+      drop.position.y += drop.userData.vel.y * dt;
+      drop.position.z += drop.userData.vel.z * dt;
+      drop.userData.life -= dt * 1.4;
+      drop.material.opacity = Math.max(0, drop.userData.life);
+      if (drop.userData.life > 0) allDead = false;
+    }
+    if (allDead) { scene.remove(grp); state.splashes.splice(i, 1); }
+  }
+
+  // ---- balloon drift ----
+  balloon.position.x += dt * 1.4;
+  balloon.position.y = 28 + Math.sin(performance.now() * 0.0006) * 1.5;
+  if (balloon.position.x > 110) balloon.position.x = -110;
 
   // ---- clouds drift ----
   for (const c of clouds) {

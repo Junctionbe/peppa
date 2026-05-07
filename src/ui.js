@@ -6,6 +6,8 @@ export const ui = {
   hintEl:       document.getElementById('hint'),
   titleEl:      document.getElementById('ui-title'),
   pizzaEl:      document.getElementById('pizza-counter'),
+  icecreamEl:   document.getElementById('icecream-counter'),
+  puddleEl:     document.getElementById('puddle-counter'),
   startOverlay: document.getElementById('start-overlay'),
 };
 
@@ -37,4 +39,14 @@ export function setExhibit(text) {
 export function setPizzaCount(n) {
   ui.pizzaEl.innerHTML = `🍕 <b>${n}</b>`;
   ui.pizzaEl.style.display = n > 0 ? 'block' : 'none';
+}
+
+export function setIceCreamCount(n) {
+  ui.icecreamEl.innerHTML = `🍦 <b>${n}</b>`;
+  ui.icecreamEl.style.display = n > 0 ? 'block' : 'none';
+}
+
+export function setPuddleCount(n) {
+  ui.puddleEl.innerHTML = `💦 <b>${n}</b>`;
+  ui.puddleEl.style.display = n > 0 ? 'block' : 'none';
 }

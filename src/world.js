@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import {
-  scene, matGrass, matRoad, matBrown, matLeaf, matCloud, matMud,
+  scene, matGrass, matRoad, matBrown, matLeaf, matCloud, matMud, matBlack,
 } from './setup.js';
 import { createSheep } from './actors/friends.js';
 
@@ -145,6 +145,115 @@ addPuddle( 0.0,  78, 1.5);
 // ---- Outdoor friends. Indoor characters are added by the building factories. ----
 export const npcs = [];
 const outdoorSheep = createSheep(0x4fc3f7); // sheep with blue bow grazing in field
-outdoorSheep.position.set(11, 0, -8);
+outdoorSheep.position.set(-8, 0, -45);
 scene.add(outdoorSheep);
 npcs.push(outdoorSheep);
+
+// ---- Hot air balloon drifting in the sky ----
+function createBalloon(color) {
+  const b = new THREE.Group();
+  const balloon = new THREE.Mesh(
+    new THREE.SphereGeometry(2, 16, 12),
+    new THREE.MeshLambertMaterial({ color }),
+  );
+  balloon.position.y = 4;
+  balloon.scale.y = 1.15;
+  balloon.castShadow = true;
+  b.add(balloon);
+  // alternating stripe (a torus around middle)
+  const stripe = new THREE.Mesh(
+    new THREE.TorusGeometry(2.0, 0.18, 6, 24),
+    new THREE.MeshLambertMaterial({ color: 0xffeb3b }),
+  );
+  stripe.position.y = 4;
+  stripe.rotation.x = Math.PI / 2;
+  b.add(stripe);
+  // basket
+  const basket = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 0.8, 1),
+    new THREE.MeshLambertMaterial({ color: 0x8d6e63 }),
+  );
+  basket.position.y = 1.2;
+  basket.castShadow = true;
+  b.add(basket);
+  // 4 ropes
+  for (const [sx, sz] of [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]]) {
+    const rope = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.02, 0.02, 1.7, 4),
+      matBlack,
+    );
+    rope.position.set(sx, 2.4, sz);
+    b.add(rope);
+  }
+  return b;
+}
+export const balloon = createBalloon(0xe53935);
+balloon.position.set(-80, 28, 40);
+scene.add(balloon);
+
+// ---- Direction signposts ----
+function makeArrowSign(text, color, direction) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 320; canvas.height = 70;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff8e1'; ctx.fillRect(0, 0, 320, 70);
+  ctx.strokeStyle = color; ctx.lineWidth = 5;
+  ctx.strokeRect(5, 5, 310, 60);
+  ctx.fillStyle = color;
+  ctx.font = 'bold 32px "Comic Sans MS", cursive';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const a = direction === 'left'  ? '◄'
+          : direction === 'right' ? '►'
+          : direction === 'up'    ? '▲'
+          : '▼';
+  const display = (direction === 'left' || direction === 'down')
+    ? `${a}  ${text}` : `${text}  ${a}`;
+  ctx.fillText(display, 160, 40);
+  const tex = new THREE.CanvasTexture(canvas);
+  return new THREE.Mesh(
+    new THREE.PlaneGeometry(2.4, 0.55),
+    new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, transparent: true }),
+  );
+}
+
+function createSignpost(planks) {
+  const g = new THREE.Group();
+  const pole = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.08, 0.08, 3.6, 8), matBrown,
+  );
+  pole.position.y = 1.8; pole.castShadow = true;
+  g.add(pole);
+  planks.forEach((p, i) => {
+    const sign = makeArrowSign(p.text, p.color, p.direction);
+    sign.position.y = 3 - i * 0.65;
+    g.add(sign);
+  });
+  return g;
+}
+
+// Sign 1: early road, pointing back to house and forward to other places
+const sp1 = createSignpost([
+  { text: 'École & Hôtel', color: '#1976d2', direction: 'up' },
+  { text: 'Maison',        color: '#c62828', direction: 'down' },
+]);
+sp1.position.set(3.5, 0, -55);
+sp1.rotation.y = -Math.PI / 2; // face the road
+scene.add(sp1);
+
+// Sign 2: at the museum branch (west side)
+const sp2 = createSignpost([
+  { text: 'Musée', color: '#6d4c41', direction: 'left' },
+  { text: 'Pizza', color: '#e53935', direction: 'down' },
+]);
+sp2.position.set(-3.5, 0, 22);
+sp2.rotation.y = Math.PI / 2;
+scene.add(sp2);
+
+// Sign 3: at the hotel branch (east side)
+const sp3 = createSignpost([
+  { text: 'Hôtel', color: '#1a237e', direction: 'right' },
+  { text: 'École', color: '#c62828', direction: 'up' },
+]);
+sp3.position.set(3.5, 0, 45);
+sp3.rotation.y = -Math.PI / 2;
+scene.add(sp3);
