@@ -7,9 +7,9 @@ import './world.js'; // side-effect: populates the environment
 
 import { state }              from './state.js';
 import { keys }               from './input.js';
-import { ui, showMessage, hideMessage, updateTitle, setHint, setExhibit, setDistance } from './ui.js';
+import { ui, updateTitle, setHint, setExhibit } from './ui.js';
 import { physics, applyCollisions } from './physics.js';
-import { puddles, clouds, friends } from './world.js';
+import { puddles, clouds, npcs as outdoorNpcs } from './world.js';
 import * as audio             from './audio.js';
 import {
   mount, dismount, activeChar, activeRig, activeMode, tryMountNearby,
@@ -31,9 +31,18 @@ state.car   = createCar();
 scene.add(state.peppa, state.papa, state.bike, state.car);
 
 // ---- Build buildings ----
-const peppaHouse = createHouse(-15, -90); scene.add(peppaHouse);
-state.school     = createSchool(15, 95);  scene.add(state.school);
-state.museum     = createMuseum(-12, 35); scene.add(state.museum);
+state.house  = createHouse(-15, -90); scene.add(state.house);
+state.school = createSchool(15, 95);  scene.add(state.school);
+state.museum = createMuseum(-12, 35); scene.add(state.museum);
+
+// All buildings the player can enter (hollow with door + roof + exhibits)
+const enterables = [state.house, state.museum, state.school];
+
+// All NPCs (used for look-at-player). Includes outdoor friends + indoor characters.
+const allNpcs = [...outdoorNpcs];
+for (const b of enterables) {
+  allNpcs.push(...(b.userData.npcs || []));
+}
 
 // ---- Initial placement ----
 state.bike.position.set(0, 0, -78);
@@ -59,10 +68,9 @@ ui.startOverlay.querySelectorAll('.choice').forEach(btn => {
 });
 
 // ---- Edge-triggered key handling ----
-let lastF = false, lastC = false, lastR = false, lastSpace = false;
+let lastF = false, lastC = false, lastSpace = false;
 
 function checkEdges() {
-  // SPACE
   if (keys['Space'] && !lastSpace) {
     const m = activeMode();
     if (m === 'bike')      { audio.playBell(); state.bellAnim = 1; }
@@ -71,50 +79,28 @@ function checkEdges() {
   }
   lastSpace = !!keys['Space'];
 
-  // F : mount / dismount
   if (keys['KeyF'] && !lastF) {
-    if (!state.won) {
-      if (state.mounts[state.currentChar]) {
-        dismount(state.currentChar);
-        state.heading = activeChar().rotation.y;
-        state.speed = 0;
-      } else {
-        const v = tryMountNearby();
-        if (v) { state.heading = v.rotation.y; state.speed = 0; }
-      }
-      updateTitle(state.currentChar, activeMode());
+    if (state.mounts[state.currentChar]) {
+      dismount(state.currentChar);
+      state.heading = activeChar().rotation.y;
+      state.speed = 0;
+    } else {
+      const v = tryMountNearby();
+      if (v) { state.heading = v.rotation.y; state.speed = 0; }
     }
+    updateTitle(state.currentChar, activeMode());
   }
   lastF = !!keys['KeyF'];
 
-  // C : switch character
   if (keys['KeyC'] && !lastC) {
-    if (!state.won) {
-      state.currentChar = state.currentChar === 'peppa' ? 'papa' : 'peppa';
-      state.heading = activeRig().rotation.y;
-      state.speed = 0;
-      updateTitle(state.currentChar, activeMode());
-    }
+    state.currentChar = state.currentChar === 'peppa' ? 'papa' : 'peppa';
+    state.heading = activeRig().rotation.y;
+    state.speed = 0;
+    updateTitle(state.currentChar, activeMode());
   }
   lastC = !!keys['KeyC'];
-
-  // R : restart (only after winning)
-  if (keys['KeyR'] && !lastR) {
-    if (state.won) {
-      state.won = false;
-      state.bike.position.set(0, 0, -78); state.bike.rotation.y = 0;
-      state.car.position.set(3.5, 0, -80); state.car.rotation.y = 0;
-      if (!state.mounts.peppa) mount('peppa', state.bike);
-      if (!state.mounts.papa)  mount('papa',  state.car);
-      state.speed = 0; state.heading = 0;
-      hideMessage();
-      updateTitle(state.currentChar, activeMode());
-    }
-  }
-  lastR = !!keys['KeyR'];
 }
 
-// ---- Helpers ----
 function animatePedal(ch, phase) {
   ch.userData.legL.rotation.x = Math.sin(phase) * 0.45;
   ch.userData.legR.rotation.x = Math.sin(phase + Math.PI) * 0.45;
@@ -122,7 +108,7 @@ function animatePedal(ch, phase) {
 
 // ---- Main loop ----
 const clock = new THREE.Clock();
-const SCHOOL_GOAL = { x: 15, z: 95 };
+const tmpVec = new THREE.Vector3();
 
 function tick() {
   const dt = Math.min(clock.getDelta(), 0.05);
@@ -169,9 +155,8 @@ function tick() {
   rig.position.x += fwdX * state.speed * dt;
   rig.position.z += fwdZ * state.speed * dt;
   rig.position.x = Math.max(-95, Math.min(95, rig.position.x));
-  rig.position.z = Math.max(-95, Math.min(115, rig.position.z));
+  rig.position.z = Math.max(-100, Math.min(115, rig.position.z));
 
-  // collisions
   applyCollisions(rig.position, params.radius);
 
   // ---- jump (foot only) ----
@@ -209,7 +194,6 @@ function tick() {
     state.car.userData.steeringWheel.rotation.z += (target - state.car.userData.steeringWheel.rotation.z) * 0.2;
     if (state.bellAnim > 0) state.bellAnim = Math.max(0, state.bellAnim - dt * 2);
   } else {
-    // foot: walk animation
     const ch = activeChar();
     state.walkPhase += Math.abs(state.speed) * dt * 3;
     const moving = Math.abs(state.speed) > 0.1 ? 1 : 0;
@@ -238,42 +222,48 @@ function tick() {
     if (c.position.x > 160) c.position.x = -160;
   }
 
-  // ---- friends face the player ----
-  for (const f of friends) {
-    const dx = rig.position.x - f.position.x;
-    const dz = rig.position.z - f.position.z;
+  // ---- NPCs face the player when close (uses world coords) ----
+  for (const f of allNpcs) {
+    f.getWorldPosition(tmpVec);
+    const dx = rig.position.x - tmpVec.x;
+    const dz = rig.position.z - tmpVec.z;
     if (dx * dx + dz * dz < 600) {
-      f.lookAt(rig.position.x, f.position.y, rig.position.z);
+      f.lookAt(rig.position.x, tmpVec.y, rig.position.z);
     }
   }
   if (state.school.userData.flag) {
     state.school.userData.flag.rotation.y = Math.sin(performance.now() * 0.003) * 0.25;
   }
 
-  // ---- museum: roof + door + exhibits ----
-  const M = state.museum.userData.center;
-  const inMuseum = (
-    rig.position.x > M.x - M.W / 2 + 0.5 && rig.position.x < M.x + M.W / 2 - 0.5 &&
-    rig.position.z > M.z - M.D / 2 + 0.5 && rig.position.z < M.z + M.D / 2 - 0.5
-  );
-  state.museum.userData.roof.visible = !inMuseum;
-
-  const distToEntrance = Math.hypot(rig.position.x - M.x, rig.position.z - (M.z - M.D / 2));
-  const wantOpen = (mode === 'foot' && distToEntrance < 4) || inMuseum;
-  const targetAng = wantOpen ? Math.PI / 2 * 0.95 : 0;
-  state.museum.userData.door.rotation.y +=
-    (targetAng - state.museum.userData.door.rotation.y) * 0.12;
-
-  // exhibit panel
+  // ---- enterable buildings: roof toggle, door open, exhibit panel ----
   let nearestExhibit = null, nearestExDist = 999;
-  if (inMuseum) {
-    const ep = new THREE.Vector3();
-    for (const ex of state.museum.userData.exhibits) {
-      ex.getWorldPosition(ep);
-      const dx = rig.position.x - ep.x, dz = rig.position.z - ep.z;
-      const d  = Math.sqrt(dx * dx + dz * dz);
-      if (d < (ex.userData.zoneRadius || 3) && d < nearestExDist) {
-        nearestExDist = d; nearestExhibit = ex;
+  let anyInside = false, nearestEntranceDist = 999;
+  for (const b of enterables) {
+    const c = b.userData.center;
+    const inside = (
+      rig.position.x > c.x - c.W / 2 + 0.5 && rig.position.x < c.x + c.W / 2 - 0.5 &&
+      rig.position.z > c.z - c.D / 2 + 0.5 && rig.position.z < c.z + c.D / 2 - 0.5
+    );
+    b.userData.roof.visible = !inside;
+    if (inside) anyInside = true;
+
+    const entranceX = c.x;
+    const entranceZ = c.z + c.doorOffsetZ;
+    const distToEntrance = Math.hypot(rig.position.x - entranceX, rig.position.z - entranceZ);
+    if (distToEntrance < nearestEntranceDist) nearestEntranceDist = distToEntrance;
+
+    const wantOpen = (mode === 'foot' && distToEntrance < 4) || inside;
+    const targetAng = wantOpen ? b.userData.doorOpenAngle : 0;
+    b.userData.door.rotation.y += (targetAng - b.userData.door.rotation.y) * 0.12;
+
+    if (inside) {
+      for (const ex of (b.userData.exhibits || [])) {
+        ex.getWorldPosition(tmpVec);
+        const dx = rig.position.x - tmpVec.x, dz = rig.position.z - tmpVec.z;
+        const d  = Math.sqrt(dx * dx + dz * dz);
+        if (d < (ex.userData.zoneRadius || 3) && d < nearestExDist) {
+          nearestExDist = d; nearestExhibit = ex;
+        }
       }
     }
   }
@@ -291,12 +281,12 @@ function tick() {
     if (nearestFreeV) {
       const what = nearestFreeV === state.bike ? 'le vélo 🚲' : 'la voiture 🚗';
       hintText = `Appuie sur <span class="key">F</span> pour monter sur ${what}`;
-    } else if (distToEntrance < 6 && !inMuseum) {
-      hintText = `Entre dans le musée 🏛️`;
+    } else if (nearestEntranceDist < 5 && !anyInside) {
+      hintText = `Entre par la porte 🚪`;
     }
   } else {
-    if (distToEntrance < 8 && !inMuseum) {
-      hintText = `<span class="key">F</span> pour descendre et entrer dans le musée 🏛️`;
+    if (nearestEntranceDist < 7 && !anyInside) {
+      hintText = `<span class="key">F</span> pour descendre et entrer 🚪`;
     }
   }
   setHint(hintText);
@@ -310,18 +300,6 @@ function tick() {
   camera.position.y += (rig.position.y + camHeight - camera.position.y) * 0.1;
   camera.position.z += (camZ - camera.position.z) * 0.1;
   camera.lookAt(rig.position.x, rig.position.y + params.lookAtY, rig.position.z);
-
-  // ---- distance to school + win ----
-  const dist = Math.round(Math.hypot(rig.position.x - SCHOOL_GOAL.x, rig.position.z - SCHOOL_GOAL.z));
-  setDistance(dist);
-
-  if (!state.won && dist < 9) {
-    state.won = true;
-    const who = state.currentChar === 'peppa' ? 'Peppa' : 'Papa Pig';
-    showMessage(`🎉 Bravo ${who} ! 🎉`,
-      "Tu es arrivé(e) à l'école !<br>Appuie sur <b>R</b> pour recommencer");
-    audio.playWin();
-  }
 
   renderer.render(scene, camera);
   requestAnimationFrame(tick);

@@ -1,7 +1,6 @@
 // DOM lookups + small helpers to keep the loop free of HTML noise.
 
 export const ui = {
-  distEl:       document.getElementById('dist-val'),
   messageEl:    document.getElementById('message'),
   exhibitEl:    document.getElementById('exhibit-panel'),
   hintEl:       document.getElementById('hint'),
@@ -32,8 +31,4 @@ export function setHint(html) {
 export function setExhibit(text) {
   if (text) { ui.exhibitEl.textContent = text; ui.exhibitEl.style.display = 'block'; }
   else      { ui.exhibitEl.style.display = 'none'; }
-}
-
-export function setDistance(n) {
-  ui.distEl.textContent = n;
 }

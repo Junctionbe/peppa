@@ -217,6 +217,7 @@ export function createMuseum(x, z) {
   doorPivot.add(knob);
   m.add(doorPivot);
   m.userData.door = doorPivot;
+  m.userData.doorOpenAngle = Math.PI / 2 * 0.95; // outward (south)
 
   // exhibits
   const exhibits = [];
@@ -247,6 +248,7 @@ export function createMuseum(x, z) {
   m.add(fossil); exhibits.push(fossil);
 
   m.userData.exhibits = exhibits;
+  m.userData.npcs = []; // museum has no NPCs (just static exhibits)
 
   // place + register colliders
   m.position.set(x, 0, z);
@@ -258,7 +260,7 @@ export function createMuseum(x, z) {
   colliders.push({ minX: x - W/2,        maxX: x - W/2 + T,    minZ: z - D/2,        maxZ: z + D/2 });
 
   // expose footprint center for the loop (door entrance check, roof toggle, etc.)
-  m.userData.center = { x, z, W, D };
+  m.userData.center = { x, z, W, D, doorOffsetZ: -D/2 };
 
   return m;
 }

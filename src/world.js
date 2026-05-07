@@ -1,11 +1,11 @@
 // Static environment: ground, road, hills, sun, clouds, trees, flowers,
-// puddles, friends. Adds itself to the scene as a side-effect on import.
+// puddles, outdoor friends. Adds itself to the scene as a side-effect on import.
 
 import * as THREE from 'three';
 import {
   scene, matGrass, matRoad, matBrown, matLeaf, matCloud, matMud,
-  matWhite, matBlack, matPink,
 } from './setup.js';
+import { createSheep } from './actors/friends.js';
 
 // ---- Ground & road ----
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), matGrass);
@@ -83,11 +83,11 @@ function createTree() {
   return t;
 }
 function isTreeSpotFree(x, z) {
-  if (Math.abs(x) < 5) return false;                            // road
-  if (x > -19 && x < -5 && z > 28 && z < 42) return false;      // museum
-  if (x > -19 && x < -10 && Math.abs(z - 28) < 3) return false; // museum path
-  if (x > -20 && x < -10 && z < -85 && z > -95) return false;   // house
-  if (x > 8 && x < 22 && z > 90 && z < 100) return false;       // school
+  if (Math.abs(x) < 5) return false;                              // road
+  if (x > -19 && x < -5  && z > 28 && z < 42) return false;       // museum
+  if (x > -19 && x < -10 && Math.abs(z - 28) < 3) return false;   // museum path
+  if (x > -23 && x < -7  && z < -83 && z > -97) return false;     // house
+  if (x >   4 && x < 26  && z > 86  && z < 105) return false;     // school
   return true;
 }
 let placed = 0;
@@ -131,40 +131,9 @@ addPuddle( 3.0,  15, 1.8);
 addPuddle(-2.5,  55, 1.4);
 addPuddle( 0.0,  78, 1.5);
 
-// ---- Friends ----
-function createSheep() {
-  const s = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 10), matWhite);
-  body.position.y = 0.5; body.scale.set(1.25, 1, 1); body.castShadow = true; s.add(body);
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.22, 10, 8),
-    new THREE.MeshLambertMaterial({ color: 0xefebe9 }),
-  );
-  head.position.set(0, 0.7, 0.45); head.castShadow = true; s.add(head);
-  for (const [x, z] of [[-0.2, 0.2], [0.2, 0.2], [-0.2, -0.2], [0.2, -0.2]]) {
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.3, 6), matBlack);
-    leg.position.set(x, 0.15, z); s.add(leg);
-  }
-  return s;
-}
-function createGeorge() {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.ConeGeometry(0.3, 0.6, 12),
-    new THREE.MeshLambertMaterial({ color: 0x66bb6a }),
-  );
-  body.position.y = 0.3; body.castShadow = true; g.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), matPink);
-  head.position.y = 0.78; head.scale.set(1, 0.95, 0.9); head.castShadow = true; g.add(head);
-  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), matPink);
-  snout.position.set(0, 0.72, 0.28); g.add(snout);
-  for (const sx of [-0.09, 0.09]) {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), matBlack);
-    eye.position.set(sx, 0.86, 0.22); g.add(eye);
-  }
-  return g;
-}
-export const friends = [];
-const s1 = createSheep(); s1.position.set(-12, 0, -30); scene.add(s1); friends.push(s1);
-const s2 = createSheep(); s2.position.set( 11, 0,  -8); scene.add(s2); friends.push(s2);
-const george = createGeorge(); george.position.set(7, 0, -82); scene.add(george); friends.push(george);
+// ---- Outdoor friends. Indoor characters are added by the building factories. ----
+export const npcs = [];
+const outdoorSheep = createSheep(0x4fc3f7); // sheep with blue bow grazing in field
+outdoorSheep.position.set(11, 0, -8);
+scene.add(outdoorSheep);
+npcs.push(outdoorSheep);
