@@ -12,7 +12,7 @@ import { physics, applyCollisions } from './physics.js';
 import { puddles, clouds, npcs as outdoorNpcs } from './world.js';
 import * as audio             from './audio.js';
 import {
-  mount, dismount, activeChar, activeRig, activeMode, tryMountNearby,
+  mount, dismount, activeChar, activeRig, activeMode, tryMountNearby, refreshAllSeats,
 } from './mount.js';
 
 import { createPeppa }   from './actors/peppa.js';
@@ -94,6 +94,9 @@ function checkEdges() {
 
   if (keys['KeyC'] && !lastC) {
     state.currentChar = state.currentChar === 'peppa' ? 'papa' : 'peppa';
+    // If both are in the same car, swap their seats so the new active
+    // (driver) sits on the left and the previous one moves to passenger.
+    refreshAllSeats();
     state.heading = activeRig().rotation.y;
     state.speed = 0;
     updateTitle(state.currentChar, activeMode());
@@ -272,15 +275,25 @@ function tick() {
   // ---- contextual hint ----
   let hintText = '';
   if (mode === 'foot') {
-    let nearestFreeV = null, nearestVD = 4;
+    const otherChar = state.currentChar === 'peppa' ? 'papa' : 'peppa';
+    let nearestVehicle = null, nearestVD = 4;
     for (const v of [state.bike, state.car]) {
-      if (state.mounts.peppa === v || state.mounts.papa === v) continue;
+      if (state.mounts[state.currentChar] === v) continue;            // already in
+      if (v === state.bike && state.mounts[otherChar] === v) continue; // bike taken
       const d = Math.hypot(v.position.x - rig.position.x, v.position.z - rig.position.z);
-      if (d < nearestVD) { nearestVD = d; nearestFreeV = v; }
+      if (d < nearestVD) { nearestVD = d; nearestVehicle = v; }
     }
-    if (nearestFreeV) {
-      const what = nearestFreeV === state.bike ? 'le vélo 🚲' : 'la voiture 🚗';
-      hintText = `Appuie sur <span class="key">F</span> pour monter sur ${what}`;
+    if (nearestVehicle) {
+      let what;
+      if (nearestVehicle === state.bike) {
+        what = 'le vélo 🚲';
+      } else if (state.mounts[otherChar] === state.car) {
+        const otherName = otherChar === 'peppa' ? 'Peppa' : 'Papa';
+        what = `la voiture 🚗 avec ${otherName}`;
+      } else {
+        what = 'la voiture 🚗';
+      }
+      hintText = `Appuie sur <span class="key">F</span> pour monter dans ${what}`;
     } else if (nearestEntranceDist < 5 && !anyInside) {
       hintText = `Entre par la porte 🚪`;
     }
