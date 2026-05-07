@@ -1,0 +1,11 @@
+node_modules
+dist
+.vite
+*.log
+
+# Editor / IDE / Claude Code local settings
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

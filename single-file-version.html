@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>🐷 Peppa & Papa Pig - Aventure</title>
+<style>
+  body, html { margin: 0; padding: 0; overflow: hidden; font-family: 'Comic Sans MS', 'Comic Neue', cursive; user-select: none; background: #87ceeb; }
+  canvas { display: block; }
+
+  #ui {
+    position: absolute; top: 12px; left: 12px;
+    background: rgba(255, 255, 255, 0.92);
+    padding: 14px 20px;
+    border-radius: 18px;
+    border: 4px solid #ff80ab;
+    color: #c2185b;
+    font-size: 14px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+    line-height: 1.5;
+    max-width: 270px;
+  }
+  #ui h2 { margin: 0 0 6px; color: #ad1457; font-size: 17px; }
+  #ui hr { border: none; border-top: 2px dashed #ffb3c6; margin: 7px 0; }
+  .key {
+    display: inline-block; background: #ffd6e4; border: 2px solid #ff80ab;
+    border-radius: 6px; padding: 0 6px; min-width: 14px; text-align: center;
+    font-weight: bold; font-family: monospace;
+  }
+
+  #message {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(180deg, #fff5f8, #ffd6e4);
+    padding: 32px 50px;
+    border-radius: 24px;
+    border: 5px solid #e91e63;
+    color: #ad1457;
+    font-size: 30px;
+    font-weight: bold;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    display: none;
+    text-align: center;
+    pointer-events: none;
+    z-index: 10;
+  }
+  #message small { display: block; font-size: 17px; margin-top: 12px; color: #6d1b40; font-weight: normal; }
+
+  #distance {
+    position: absolute; top: 12px; right: 12px;
+    background: rgba(255, 255, 255, 0.92);
+    padding: 10px 16px;
+    border-radius: 14px;
+    border: 3px solid #4fc3f7;
+    color: #01579b;
+    font-size: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    text-align: center;
+  }
+  #distance b { font-size: 22px; display: block; }
+
+  #exhibit-panel {
+    position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+    background: rgba(255, 248, 225, 0.97);
+    border: 4px solid #ffb300;
+    border-radius: 18px;
+    padding: 14px 26px;
+    color: #4e342e;
+    font-size: 18px;
+    font-weight: bold;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+    text-align: center;
+    display: none;
+    max-width: 78%;
+  }
+
+  #hint {
+    position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.72);
+    color: white;
+    padding: 8px 18px;
+    border-radius: 12px;
+    font-size: 15px;
+    display: none;
+    pointer-events: none;
+  }
+  #hint .key { background: #fff; color: #222; border-color: #fff; }
+
+  #start-overlay {
+    position: absolute; inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 20;
+    color: white; text-align: center;
+    flex-direction: column; gap: 20px; padding: 20px;
+  }
+  #start-overlay h1 { font-size: 34px; margin: 0; text-shadow: 0 3px 8px rgba(0,0,0,0.6); }
+  #start-overlay .choices { display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; }
+  .choice {
+    background: linear-gradient(180deg, #fff5f8, #ffd6e4);
+    color: #ad1457;
+    padding: 20px 28px;
+    border-radius: 22px;
+    border: 5px solid #e91e63;
+    font-size: 21px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.3);
+    min-width: 200px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    font-family: inherit;
+  }
+  .choice:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.4); }
+  .choice .emoji { font-size: 50px; display: block; margin-bottom: 4px; }
+  .choice.papa { background: linear-gradient(180deg, #f0f8ff, #c5e1ff); border-color: #1976d2; color: #0d47a1; }
+  #start-overlay small { font-size: 15px; opacity: 0.9; font-weight: normal; max-width: 480px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <h2 id="ui-title">🐷 Peppa à vélo</h2>
+  <div id="ui-sub">Direction l'école 🏫 ou le musée 🏛️ !</div>
+  <hr>
+  <div><span class="key">↑</span> <span class="key">↓</span> &nbsp;avancer / reculer</div>
+  <div><span class="key">←</span> <span class="key">→</span> &nbsp;tourner</div>
+  <div><span class="key">F</span> &nbsp;monter / descendre</div>
+  <div><span class="key">C</span> &nbsp;changer de héros</div>
+  <div><span class="key">Espace</span> &nbsp;cloche / klaxon / saut</div>
+  <hr>
+  <div style="font-size:12px;color:#ad1457">Attention aux flaques 💦 et aux murs !</div>
+</div>
+
+<div id="distance">🏫 École<b id="dist-val">--</b>mètres</div>
+
+<div id="exhibit-panel"></div>
+<div id="hint"></div>
+<div id="message"></div>
+
+<div id="start-overlay">
+  <h1>🐷 Choisis ton héros ! 🐽</h1>
+  <div class="choices">
+    <button class="choice peppa" data-vehicle="peppa">
+      <span class="emoji">🐷🚲</span>
+      Peppa à vélo
+    </button>
+    <button class="choice papa" data-vehicle="papa">
+      <span class="emoji">🐽🚗</span>
+      Papa Pig en voiture
+    </button>
+  </div>
+  <small>En jeu : <b>F</b> pour descendre du véhicule et marcher, <b>C</b> pour changer de héros, et entre dans le <b>musée</b> 🏛️ pour voir les expositions !</small>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script>
+// ============================================================
+// PEPPA & PAPA PIG - aventure 3D : maison, musée, école
+// ============================================================
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+scene.fog = new THREE.Fog(0xb3e0ff, 100, 280);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ---- Lights ----
+scene.add(new THREE.AmbientLight(0xfff0d8, 0.7));
+const sun = new THREE.DirectionalLight(0xfff5d0, 1.0);
+sun.position.set(40, 70, 30);
+sun.castShadow = true;
+sun.shadow.camera.left = -110; sun.shadow.camera.right = 110;
+sun.shadow.camera.top = 110;   sun.shadow.camera.bottom = -110;
+sun.shadow.camera.near = 1;    sun.shadow.camera.far = 230;
+sun.shadow.mapSize.set(2048, 2048);
+scene.add(sun);
+
+// ---- Materials ----
+const matGrass    = new THREE.MeshLambertMaterial({ color: 0x6fc845 });
+const matRoad     = new THREE.MeshLambertMaterial({ color: 0xc4a576 });
+const matPink     = new THREE.MeshLambertMaterial({ color: 0xffb3c6 });
+const matRed      = new THREE.MeshLambertMaterial({ color: 0xe53935 });
+const matRedDk    = new THREE.MeshLambertMaterial({ color: 0xc62828 });
+const matBlack    = new THREE.MeshLambertMaterial({ color: 0x222222 });
+const matWhite    = new THREE.MeshLambertMaterial({ color: 0xffffff });
+const matBrown    = new THREE.MeshLambertMaterial({ color: 0x8d6e63 });
+const matLeaf     = new THREE.MeshLambertMaterial({ color: 0x43a047 });
+const matCloud    = new THREE.MeshLambertMaterial({ color: 0xffffff });
+const matMud      = new THREE.MeshLambertMaterial({ color: 0x6d4c41 });
+const matYellow   = new THREE.MeshLambertMaterial({ color: 0xffc107 });
+const matBlue     = new THREE.MeshLambertMaterial({ color: 0x42a5f5 });
+const matBlueDk   = new THREE.MeshLambertMaterial({ color: 0x1976d2 });
+const matOrange   = new THREE.MeshLambertMaterial({ color: 0xff9800 });
+const matRoof     = new THREE.MeshLambertMaterial({ color: 0x8b3a1c });
+const matWindow   = new THREE.MeshLambertMaterial({ color: 0xb3e5fc });
+const matCheek    = new THREE.MeshBasicMaterial   ({ color: 0xff6b8a });
+const matBeige    = new THREE.MeshLambertMaterial({ color: 0xe8dec0 });
+const matMarble   = new THREE.MeshLambertMaterial({ color: 0xb0b0b0 });
+const matBone     = new THREE.MeshLambertMaterial({ color: 0xeae0c8 });
+const matGold     = new THREE.MeshLambertMaterial({ color: 0xffd54f });
+
+// ---- Ground & road ----
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), matGrass);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const road = new THREE.Mesh(new THREE.PlaneGeometry(7, 200), matRoad);
+road.rotation.x = -Math.PI / 2;
+road.position.y = 0.02;
+road.receiveShadow = true;
+scene.add(road);
+
+const dashMat = new THREE.MeshLambertMaterial({ color: 0xfffacd });
+for (let z = -90; z <= 90; z += 5) {
+  const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 1.5), dashMat);
+  dash.rotation.x = -Math.PI / 2;
+  dash.position.set(0, 0.04, z);
+  scene.add(dash);
+}
+
+// path to museum (small path branching off the road)
+const path = new THREE.Mesh(new THREE.PlaneGeometry(3, 22), matRoad);
+path.rotation.x = -Math.PI / 2;
+path.rotation.z = Math.PI / 2;
+path.position.set(-7, 0.02, 28);
+path.receiveShadow = true;
+scene.add(path);
+
+// ---- Hills ----
+function addHill(x, z, scale, color) {
+  const hill = new THREE.Mesh(
+    new THREE.SphereGeometry(scale, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.MeshLambertMaterial({ color })
+  );
+  hill.position.set(x, 0, z);
+  hill.receiveShadow = true;
+  scene.add(hill);
+}
+addHill(-80, -150, 30, 0x5cb036);
+addHill( 60, -180, 40, 0x4fa030);
+addHill(-130, 100, 35, 0x5cb036);
+addHill( 120,  60, 28, 0x66bf42);
+
+const sunVisual = new THREE.Mesh(new THREE.SphereGeometry(6, 16, 16),
+  new THREE.MeshBasicMaterial({ color: 0xffeb3b }));
+sunVisual.position.set(60, 80, -100);
+scene.add(sunVisual);
+
+// ---- Clouds ----
+const clouds = [];
+function addCloud(x, y, z) {
+  const c = new THREE.Group();
+  for (let i = 0; i < 4; i++) {
+    const puff = new THREE.Mesh(new THREE.SphereGeometry(2 + Math.random() * 1.5, 10, 8), matCloud);
+    puff.position.set((i - 1.5) * 1.6 + Math.random() * 0.5, Math.random() * 0.4, Math.random() * 0.5);
+    c.add(puff);
+  }
+  c.position.set(x, y, z); scene.add(c); clouds.push(c);
+}
+for (let i = 0; i < 9; i++) addCloud(-120 + Math.random() * 240, 28 + Math.random() * 14, -120 + Math.random() * 240);
+
+// ---- Trees ----
+function createTree() {
+  const t = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 1.6, 8), matBrown);
+  trunk.position.y = 0.8; trunk.castShadow = true; t.add(trunk);
+  const leaves = new THREE.Mesh(new THREE.SphereGeometry(1.4, 12, 10), matLeaf);
+  leaves.position.y = 2.5; leaves.castShadow = true; t.add(leaves);
+  return t;
+}
+function isTreeSpotFree(x, z) {
+  // keep trees out of museum/house/school footprints and the road/path
+  if (Math.abs(x) < 5) return false;                              // road
+  if (x > -19 && x < -5 && z > 28 && z < 42) return false;        // museum
+  if (x > -19 && x < -10 && Math.abs(z - 28) < 3) return false;   // path approach
+  if (x > -20 && x < -10 && z < -85 && z > -95) return false;     // house
+  if (x > 8 && x < 22 && z > 90 && z < 100) return false;         // school
+  return true;
+}
+let treesPlaced = 0;
+while (treesPlaced < 65) {
+  const side = Math.random() < 0.5 ? -1 : 1;
+  const x = side * (8 + Math.random() * 80);
+  const z = -110 + Math.random() * 220;
+  if (!isTreeSpotFree(x, z)) continue;
+  const tree = createTree();
+  tree.position.set(x, 0, z);
+  tree.scale.setScalar(0.8 + Math.random() * 0.7);
+  tree.rotation.y = Math.random() * Math.PI * 2;
+  scene.add(tree);
+  treesPlaced++;
+}
+
+// ---- Flowers ----
+const flowerColors = [0xff5252, 0xffeb3b, 0xe040fb, 0xff80ab, 0xffffff, 0xffa726];
+for (let i = 0; i < 230; i++) {
+  const flower = new THREE.Mesh(
+    new THREE.SphereGeometry(0.16, 6, 5),
+    new THREE.MeshLambertMaterial({ color: flowerColors[Math.floor(Math.random() * flowerColors.length)] })
+  );
+  const side = Math.random() < 0.5 ? -1 : 1;
+  flower.position.set(side * (5 + Math.random() * 70), 0.16, -100 + Math.random() * 200);
+  scene.add(flower);
+}
+
+// ---- Mud puddles ----
+const puddles = [];
+function addPuddle(x, z, size) {
+  const p = new THREE.Mesh(new THREE.CircleGeometry(size, 16), matMud);
+  p.rotation.x = -Math.PI / 2; p.position.set(x, 0.03, z);
+  scene.add(p); puddles.push({ x, z, size });
+}
+addPuddle( 2.0, -40, 1.6);
+addPuddle(-2.5, -10, 1.2);
+addPuddle( 3.0,  15, 1.8);
+addPuddle(-2.5,  55, 1.4);
+addPuddle( 0.0,  78, 1.5);
+
+// ---- Sign helper ----
+function makeTextSign(text, w, h, bg = '#ffffff', fg = '#c62828') {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512; canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = fg; ctx.lineWidth = 8;
+  ctx.strokeRect(8, 8, canvas.width - 16, canvas.height - 16);
+  ctx.fillStyle = fg;
+  ctx.font = 'bold 80px "Comic Sans MS", cursive, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2 + 6);
+  const tex = new THREE.CanvasTexture(canvas);
+  return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex }));
+}
+
+// ---- Collision system ----
+const colliders = []; // axis-aligned boxes in XZ plane: {minX, maxX, minZ, maxZ}
+
+function applyCollisions(rigPos, radius) {
+  for (const b of colliders) {
+    const cx = Math.max(b.minX, Math.min(rigPos.x, b.maxX));
+    const cz = Math.max(b.minZ, Math.min(rigPos.z, b.maxZ));
+    const dx = rigPos.x - cx, dz = rigPos.z - cz;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < radius * radius) {
+      if (d2 > 0.0001) {
+        const d = Math.sqrt(d2);
+        const push = radius - d;
+        rigPos.x += (dx / d) * push;
+        rigPos.z += (dz / d) * push;
+      } else {
+        // inside box — push out via shortest face
+        const dxL = rigPos.x - b.minX, dxR = b.maxX - rigPos.x;
+        const dzS = rigPos.z - b.minZ, dzN = b.maxZ - rigPos.z;
+        const m = Math.min(dxL, dxR, dzS, dzN);
+        if (m === dxL) rigPos.x = b.minX - radius;
+        else if (m === dxR) rigPos.x = b.maxX + radius;
+        else if (m === dzS) rigPos.z = b.minZ - radius;
+        else rigPos.z = b.maxZ + radius;
+      }
+    }
+  }
+}
+
+// ---- Peppa's house ----
+function createHouse() {
+  const h = new THREE.Group();
+  const walls = new THREE.Mesh(new THREE.BoxGeometry(7, 5, 6), matOrange);
+  walls.position.y = 2.5; walls.castShadow = true; walls.receiveShadow = true; h.add(walls);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(5.5, 2.5, 4), matRoof);
+  roof.position.y = 6.25; roof.rotation.y = Math.PI / 4; roof.castShadow = true; h.add(roof);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.4, 0.2), matRedDk);
+  door.position.set(0, 1.2, 3.05); h.add(door);
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), matYellow);
+  knob.position.set(0.5, 1.2, 3.18); h.add(knob);
+  const win1 = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 0.1), matWindow);
+  win1.position.set(-2.2, 3, 3.05); h.add(win1);
+  const win2 = win1.clone(); win2.position.set(2.2, 3, 3.05); h.add(win2);
+  const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.3, 0.7), matRedDk);
+  chimney.position.set(1.8, 6.6, 0); h.add(chimney);
+  const sign = makeTextSign('MAISON', 2.2, 0.6);
+  sign.position.set(0, 4.2, 3.06); h.add(sign);
+  return h;
+}
+const peppaHouse = createHouse();
+peppaHouse.position.set(-15, 0, -90);
+scene.add(peppaHouse);
+// Peppa's house collider (3.5 wide × 3 deep, centered)
+colliders.push({ minX: -18.5, maxX: -11.5, minZ: -93, maxZ: -87 });
+
+// ---- School ----
+function createSchool() {
+  const s = new THREE.Group();
+  const main = new THREE.Mesh(new THREE.BoxGeometry(12, 5, 7), matYellow);
+  main.position.y = 2.5; main.castShadow = true; main.receiveShadow = true; s.add(main);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(8.5, 2, 4), matRedDk);
+  roof.position.y = 6; roof.rotation.y = Math.PI / 4; roof.scale.set(1, 1, 0.6); roof.castShadow = true; s.add(roof);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.8, 0.2), matRedDk);
+  door.position.set(0, 1.4, 3.55); s.add(door);
+  for (const i of [-1, 1]) {
+    const w = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 0.1), matWindow);
+    w.position.set(i * 3.5, 3.2, 3.55); s.add(w);
+  }
+  for (const i of [-2, -1, 0, 1, 2]) {
+    const w = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.0, 0.1), matWindow);
+    w.position.set(i * 2.2, 3.2, -3.55); s.add(w);
+  }
+  const sign = makeTextSign('ÉCOLE', 5, 1.2);
+  sign.position.set(0, 5.5, 3.62); s.add(sign);
+
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 4, 6), matBlack);
+  pole.position.set(-5.5, 2, 3.5); s.add(pole);
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.9),
+    new THREE.MeshLambertMaterial({ color: 0xe53935, side: THREE.DoubleSide }));
+  flag.position.set(-4.7, 3.55, 3.5);
+  s.add(flag); s.userData.flag = flag;
+
+  // playground
+  const swing = new THREE.Group();
+  const post1 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3, 6), matRed);
+  post1.position.set(-1.2, 1.5, 0); post1.rotation.z =  0.2; swing.add(post1);
+  const post2 = post1.clone();
+  post2.position.set( 1.2, 1.5, 0); post2.rotation.z = -0.2; swing.add(post2);
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.5, 6), matRed);
+  top.rotation.z = Math.PI / 2; top.position.y = 3; swing.add(top);
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.08, 0.3), matBlue);
+  seat.position.set(0, 1.5, 0); swing.add(seat);
+  swing.position.set(8, 0, 5); s.add(swing);
+
+  const slide = new THREE.Group();
+  const ladder = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.4, 6), matRed);
+  ladder.position.set(0, 1.2, 0); slide.add(ladder);
+  const ramp = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.1, 3), matBlue);
+  ramp.position.set(0.6, 1.2, 1.4); ramp.rotation.x = -0.45; slide.add(ramp);
+  slide.position.set(-8, 0, 5); s.add(slide);
+
+  return s;
+}
+const school = createSchool();
+school.position.set(15, 0, 95);
+scene.add(school);
+// School collider (6 wide × 3.5 deep)
+colliders.push({ minX: 9, maxX: 21, minZ: 91.5, maxZ: 98.5 });
+
+// ---- Museum ----
+function createDinoSkeleton() {
+  const g = new THREE.Group();
+  // plinth
+  const plinth = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.3, 1.6),
+    new THREE.MeshLambertMaterial({ color: 0x8d6e63 }));
+  plinth.position.y = 0.15; plinth.receiveShadow = true; g.add(plinth);
+  // spine
+  const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.6, 8), matBone);
+  spine.rotation.z = Math.PI / 2; spine.position.y = 1.5; spine.castShadow = true; g.add(spine);
+  // tail
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.1, 1.5, 8), matBone);
+  tail.rotation.z = Math.PI / 2 + 0.2; tail.position.set(-1.9, 1.45, 0); g.add(tail);
+  // skull
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), matBone);
+  skull.position.set(1.55, 1.55, 0); skull.scale.set(1.3, 0.85, 0.85); skull.castShadow = true; g.add(skull);
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.1, 0.55), matBone);
+  jaw.position.set(1.7, 1.35, 0); g.add(jaw);
+  // eye sockets
+  for (const sz of [-0.18, 0.18]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), matBlack);
+    eye.position.set(1.6, 1.62, sz); g.add(eye);
+  }
+  // legs
+  for (const [x, z] of [[-0.5, 0.4], [0.5, 0.4], [-0.5, -0.4], [0.5, -0.4]]) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 1.3, 6), matBone);
+    leg.position.set(x, 0.95, z); leg.castShadow = true; g.add(leg);
+  }
+  // ribs
+  for (let i = -3; i <= 3; i++) {
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.04, 6, 12, Math.PI), matBone);
+    rib.position.set(i * 0.32, 1.5, 0); rib.rotation.y = Math.PI / 2;
+    g.add(rib);
+  }
+  return g;
+}
+
+function createPainting() {
+  const g = new THREE.Group();
+  // gold frame
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.6, 0.12), matGold);
+  g.add(frame);
+  // canvas painting via 2D
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 192;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#a3d8f7'; ctx.fillRect(0, 0, 256, 192);
+  ctx.fillStyle = '#7ec850'; ctx.fillRect(0, 130, 256, 62);
+  // Peppa
+  ctx.fillStyle = '#e53935';
+  ctx.beginPath(); ctx.moveTo(80, 130); ctx.lineTo(60, 170); ctx.lineTo(100, 170); ctx.fill();
+  ctx.fillStyle = '#ffb3c6';
+  ctx.beginPath(); ctx.arc(80, 110, 16, 0, Math.PI * 2); ctx.fill();
+  // small snout
+  ctx.beginPath(); ctx.arc(91, 113, 7, 0, Math.PI * 2); ctx.fill();
+  // George (smaller, green)
+  ctx.fillStyle = '#4caf50';
+  ctx.beginPath(); ctx.moveTo(120, 142); ctx.lineTo(108, 170); ctx.lineTo(132, 170); ctx.fill();
+  ctx.fillStyle = '#ffb3c6';
+  ctx.beginPath(); ctx.arc(120, 128, 11, 0, Math.PI * 2); ctx.fill();
+  // Mama (orange)
+  ctx.fillStyle = '#ff9800';
+  ctx.beginPath(); ctx.moveTo(160, 112); ctx.lineTo(140, 170); ctx.lineTo(180, 170); ctx.fill();
+  ctx.fillStyle = '#ffb3c6';
+  ctx.beginPath(); ctx.arc(160, 92, 19, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(173, 95, 8, 0, Math.PI * 2); ctx.fill();
+  // Papa (blue, big)
+  ctx.fillStyle = '#1976d2';
+  ctx.beginPath(); ctx.moveTo(210, 105); ctx.lineTo(185, 170); ctx.lineTo(235, 170); ctx.fill();
+  ctx.fillStyle = '#ffb3c6';
+  ctx.beginPath(); ctx.arc(210, 85, 22, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(225, 88, 9, 0, Math.PI * 2); ctx.fill();
+  // glasses
+  ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(204, 84, 5, 0, Math.PI * 2); ctx.arc(216, 84, 5, 0, Math.PI * 2); ctx.stroke();
+  // sun
+  ctx.fillStyle = '#ffeb3b';
+  ctx.beginPath(); ctx.arc(225, 30, 17, 0, Math.PI * 2); ctx.fill();
+  const tex = new THREE.CanvasTexture(canvas);
+  const cm = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.4),
+    new THREE.MeshBasicMaterial({ map: tex }));
+  cm.position.z = 0.07;
+  g.add(cm);
+  return g;
+}
+
+function createVase() {
+  const g = new THREE.Group();
+  // pedestal
+  const ped = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.0, 1.0),
+    new THREE.MeshLambertMaterial({ color: 0xbcaaa4 }));
+  ped.position.y = 0.5; ped.castShadow = true; g.add(ped);
+  // vase
+  const vaseMat = new THREE.MeshLambertMaterial({ color: 0x42a5f5 });
+  const lower = new THREE.Mesh(new THREE.SphereGeometry(0.4, 14, 12), vaseMat);
+  lower.position.y = 1.4; lower.scale.set(1, 1.1, 1); lower.castShadow = true; g.add(lower);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.3, 0.4, 12), vaseMat);
+  neck.position.y = 1.95; g.add(neck);
+  const lip = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.18, 0.08, 12), vaseMat);
+  lip.position.y = 2.18; g.add(lip);
+  // gold pattern band
+  const band = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.04, 6, 16), matGold);
+  band.position.y = 1.4; band.rotation.x = Math.PI / 2; g.add(band);
+  return g;
+}
+
+function createFossil() {
+  const g = new THREE.Group();
+  // backboard
+  const board = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 0.1), matBeige);
+  g.add(board);
+  // spiral fossil (ammonite-like)
+  const fossilMat = new THREE.MeshLambertMaterial({ color: 0x5d4037 });
+  for (let i = 0; i < 28; i++) {
+    const t = i / 27;
+    const ang = t * Math.PI * 4;
+    const r = 0.08 + t * 0.45;
+    const seg = new THREE.Mesh(new THREE.SphereGeometry(0.06 + t * 0.06, 8, 6), fossilMat);
+    seg.position.set(Math.cos(ang) * r, Math.sin(ang) * r, 0.07);
+    g.add(seg);
+  }
+  return g;
+}
+
+function createMuseum() {
+  const m = new THREE.Group();
+  const W = 14, D = 12, H = 5;     // outer dimensions
+  const T = 0.4;                    // wall thickness
+  const DW = 3, DH = 3;             // door opening
+  m.userData.size = { W, D, H, T, DW, DH };
+
+  // Floor inside
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(W, 0.1, D), matMarble);
+  floor.position.y = 0.05; floor.receiveShadow = true; m.add(floor);
+
+  // North wall (back, +Z)
+  const nw = new THREE.Mesh(new THREE.BoxGeometry(W, H, T), matBeige);
+  nw.position.set(0, H/2, D/2 - T/2); nw.castShadow = true; nw.receiveShadow = true;
+  m.add(nw);
+
+  // South wall (front, -Z) with door opening
+  const sideW = (W - DW) / 2;
+  const swl = new THREE.Mesh(new THREE.BoxGeometry(sideW, H, T), matBeige);
+  swl.position.set(-(DW/2 + sideW/2), H/2, -D/2 + T/2);
+  swl.castShadow = true; swl.receiveShadow = true; m.add(swl);
+  const swr = swl.clone();
+  swr.position.x = (DW/2 + sideW/2);
+  m.add(swr);
+  const swt = new THREE.Mesh(new THREE.BoxGeometry(DW, H - DH, T), matBeige);
+  swt.position.set(0, DH + (H - DH)/2, -D/2 + T/2);
+  swt.castShadow = true; m.add(swt);
+
+  // East wall
+  const ew = new THREE.Mesh(new THREE.BoxGeometry(T, H, D), matBeige);
+  ew.position.set(W/2 - T/2, H/2, 0); ew.castShadow = true; ew.receiveShadow = true;
+  m.add(ew);
+  // West wall
+  const ww = new THREE.Mesh(new THREE.BoxGeometry(T, H, D), matBeige);
+  ww.position.set(-W/2 + T/2, H/2, 0); ww.castShadow = true; ww.receiveShadow = true;
+  m.add(ww);
+
+  // Roof (group, hide when player is inside)
+  const roof = new THREE.Group();
+  const roofBase = new THREE.Mesh(new THREE.BoxGeometry(W + 0.4, 0.3, D + 0.4),
+    new THREE.MeshLambertMaterial({ color: 0xa1887f }));
+  roofBase.position.y = H + 0.15; roofBase.castShadow = true; roof.add(roofBase);
+  const triRoof = new THREE.Mesh(new THREE.ConeGeometry(D * 0.65, 1.5, 4),
+    new THREE.MeshLambertMaterial({ color: 0x6d4c41 }));
+  triRoof.position.y = H + 1.0; triRoof.rotation.y = Math.PI / 4;
+  triRoof.scale.set(W/D, 1, 1); triRoof.castShadow = true;
+  roof.add(triRoof);
+  m.add(roof);
+  m.userData.roof = roof;
+
+  // Pillars at front (decorative columns either side of door)
+  for (const sx of [-DW/2 - 0.3, DW/2 + 0.3]) {
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, DH + 0.3, 12), matWhite);
+    col.position.set(sx, (DH + 0.3) / 2, -D/2 - 0.05);
+    col.castShadow = true; m.add(col);
+  }
+  // Steps in front of door
+  const steps = new THREE.Mesh(new THREE.BoxGeometry(DW + 1.5, 0.2, 1.2),
+    new THREE.MeshLambertMaterial({ color: 0xbdbdbd }));
+  steps.position.set(0, 0.1, -D/2 - 0.6); m.add(steps);
+
+  // MUSÉE sign
+  const sign = makeTextSign('MUSÉE', 4, 1, '#fff', '#6d4c41');
+  sign.position.set(0, DH + 0.7, -D/2 + 0.05);
+  sign.rotation.y = Math.PI;
+  m.add(sign);
+
+  // Door (hinges on its left edge from outside POV)
+  const doorPivot = new THREE.Group();
+  doorPivot.position.set(-DW/2, 0, -D/2 + T/2);
+  const doorMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(DW * 0.94, DH * 0.96, 0.06),
+    new THREE.MeshLambertMaterial({ color: 0x6d4c41 })
+  );
+  doorMesh.position.set(DW * 0.47, DH/2, 0);
+  doorMesh.castShadow = true;
+  doorPivot.add(doorMesh);
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), matGold);
+  knob.position.set(DW * 0.85, DH/2, 0.06);
+  doorPivot.add(knob);
+  m.add(doorPivot);
+  m.userData.door = doorPivot;
+
+  // Exhibits
+  const exhibits = [];
+  function addExhibit(obj, x, z, label) {
+    obj.position.set(x, 0.1, z);
+    obj.userData.label = label;
+    obj.userData.zoneRadius = 3;
+    m.add(obj);
+    exhibits.push(obj);
+  }
+  addExhibit(createDinoSkeleton(),    -3.5, 3.0, '🦕 Dino-saure : il habitait ici il y a très très longtemps !');
+  addExhibit(createVase(),              3.5, 3.0, '🏺 Vase ancien : la famille Pig l\'a trouvé dans le jardin.');
+  // Wall-mounted things
+  const painting = createPainting();
+  painting.position.set(-W/2 + 0.18, 2.5, 0);
+  painting.rotation.y = Math.PI / 2;
+  painting.userData.label = '🖼️ "La famille Pig" — un beau portrait de famille !';
+  painting.userData.zoneRadius = 3;
+  m.add(painting); exhibits.push(painting);
+
+  const fossil = createFossil();
+  fossil.position.set(W/2 - 0.18, 2.5, 0);
+  fossil.rotation.y = -Math.PI / 2;
+  fossil.userData.label = '🐚 Coquillage fossile : très très vieux (mille ans) !';
+  fossil.userData.zoneRadius = 3;
+  m.add(fossil); exhibits.push(fossil);
+
+  m.userData.exhibits = exhibits;
+
+  return m;
+}
+const museum = createMuseum();
+const MUSEUM_X = -12, MUSEUM_Z = 35;
+museum.position.set(MUSEUM_X, 0, MUSEUM_Z);
+scene.add(museum);
+
+// Museum colliders (5 wall segments in world coords)
+const _W = 14, _D = 12, _T = 0.4, _DW = 3;
+// north wall (back)
+colliders.push({ minX: MUSEUM_X - _W/2,    maxX: MUSEUM_X + _W/2,    minZ: MUSEUM_Z + _D/2 - _T, maxZ: MUSEUM_Z + _D/2 });
+// south wall west segment
+colliders.push({ minX: MUSEUM_X - _W/2,    maxX: MUSEUM_X - _DW/2,   minZ: MUSEUM_Z - _D/2,      maxZ: MUSEUM_Z - _D/2 + _T });
+// south wall east segment
+colliders.push({ minX: MUSEUM_X + _DW/2,   maxX: MUSEUM_X + _W/2,    minZ: MUSEUM_Z - _D/2,      maxZ: MUSEUM_Z - _D/2 + _T });
+// east wall
+colliders.push({ minX: MUSEUM_X + _W/2 - _T, maxX: MUSEUM_X + _W/2,  minZ: MUSEUM_Z - _D/2,      maxZ: MUSEUM_Z + _D/2 });
+// west wall
+colliders.push({ minX: MUSEUM_X - _W/2,    maxX: MUSEUM_X - _W/2 + _T, minZ: MUSEUM_Z - _D/2,    maxZ: MUSEUM_Z + _D/2 });
+
+// ---- Peppa character (full body, hip-pivot legs) ----
+function createPeppa() {
+  const peppa = new THREE.Group();
+
+  // dress (cone)
+  const body = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.95, 12), matRed);
+  body.position.y = 0.47; body.castShadow = true;
+  peppa.add(body);
+
+  // head
+  const head = new THREE.Group(); head.position.y = 1.05;
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 14), matPink);
+  skull.scale.set(1, 0.95, 0.92); skull.castShadow = true; head.add(skull);
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), matPink);
+  snout.position.set(0, -0.05, 0.4); snout.scale.set(1, 0.85, 1); head.add(snout);
+  for (const sx of [-0.06, 0.06]) {
+    const n = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), matBlack);
+    n.position.set(sx, -0.02, 0.6); head.add(n);
+  }
+  for (const sx of [-0.13, 0.13]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 10), matWhite);
+    eye.position.set(sx, 0.15, 0.3); head.add(eye);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), matBlack);
+    pupil.position.set(sx, 0.15, 0.38); head.add(pupil);
+  }
+  for (const sx of [-0.32, 0.32]) {
+    const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), matCheek);
+    cheek.position.set(sx, -0.05, 0.18); cheek.scale.set(0.7, 0.7, 0.5); head.add(cheek);
+  }
+  const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 6, 12, Math.PI), matBlack);
+  mouth.position.set(0, -0.18, 0.55); mouth.rotation.x = Math.PI; head.add(mouth);
+  const earGeo = new THREE.ConeGeometry(0.08, 0.18, 4);
+  for (const sx of [-0.22, 0.22]) {
+    const ear = new THREE.Mesh(earGeo, matPink);
+    ear.position.set(sx, 0.4, -0.05);
+    ear.rotation.set(-0.3, 0, sx > 0 ? 0.3 : -0.3);
+    head.add(ear);
+  }
+  peppa.add(head);
+
+  // arm pivots (shoulders)
+  function makeArm(side) {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * 0.32, 0.85, 0);
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.55, 6), matPink);
+    arm.position.y = -0.27;
+    arm.castShadow = true;
+    pivot.add(arm);
+    return pivot;
+  }
+  const armL = makeArm(-1);
+  const armR = makeArm( 1);
+  peppa.add(armL); peppa.add(armR);
+  peppa.userData.armL = armL;
+  peppa.userData.armR = armR;
+
+  // leg pivots (hips)
+  function makeLeg(side) {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * 0.18, 0.45, 0.05);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.4, 6), matPink);
+    leg.position.y = -0.2; leg.castShadow = true;
+    pivot.add(leg);
+    const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.28), matBlack);
+    shoe.position.set(0, -0.42, 0.08);
+    pivot.add(shoe);
+    return pivot;
+  }
+  const legL = makeLeg(-1);
+  const legR = makeLeg( 1);
+  peppa.add(legL); peppa.add(legR);
+  peppa.userData.legL = legL;
+  peppa.userData.legR = legR;
+
+  return peppa;
+}
+
+// ---- Papa Pig (full body, hip-pivot legs, glasses) ----
+function createPapa() {
+  const papa = new THREE.Group();
+
+  // shirt (cylinder, slightly wider)
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.7, 12), matBlueDk);
+  torso.position.y = 0.85; torso.castShadow = true;
+  papa.add(torso);
+
+  // head
+  const head = new THREE.Group(); head.position.y = 1.45;
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 14), matPink);
+  skull.scale.set(1, 0.95, 0.92); skull.castShadow = true; head.add(skull);
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 10), matPink);
+  snout.position.set(0, -0.05, 0.46); snout.scale.set(1, 0.85, 1); head.add(snout);
+  // beard / stubble
+  const beardMat = new THREE.MeshLambertMaterial({ color: 0x4a4a4a });
+  for (let i = 0; i < 9; i++) {
+    const stub = new THREE.Mesh(new THREE.SphereGeometry(0.045 + Math.random() * 0.03, 6, 5), beardMat);
+    const t = (i / 8) * Math.PI - Math.PI / 2;
+    stub.position.set(Math.sin(t) * 0.32, -0.2 + (Math.random() - 0.5) * 0.06, 0.3 + Math.cos(t) * 0.18);
+    head.add(stub);
+  }
+  // glasses
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0x1a1a1a });
+  for (const sx of [-0.18, 0.18]) {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.13, 0.17, 18), ringMat);
+    ring.position.set(sx, 0.13, 0.42); head.add(ring);
+    const fill = new THREE.Mesh(new THREE.CircleGeometry(0.13, 16),
+      new THREE.MeshBasicMaterial({ color: 0xbbdefb, transparent: true, opacity: 0.55 }));
+    fill.position.set(sx, 0.13, 0.41); head.add(fill);
+  }
+  const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.025, 0.02), ringMat);
+  bridge.position.set(0, 0.13, 0.43); head.add(bridge);
+  for (const sx of [-0.18, 0.18]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), matBlack);
+    eye.position.set(sx, 0.13, 0.36); head.add(eye);
+  }
+  for (const sx of [-0.07, 0.07]) {
+    const n = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), matBlack);
+    n.position.set(sx, -0.02, 0.7); head.add(n);
+  }
+  const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.018, 6, 14, Math.PI), matBlack);
+  mouth.position.set(0, -0.2, 0.65); mouth.rotation.x = Math.PI; head.add(mouth);
+  const earGeo = new THREE.ConeGeometry(0.1, 0.22, 4);
+  for (const sx of [-0.3, 0.3]) {
+    const ear = new THREE.Mesh(earGeo, matPink);
+    ear.position.set(sx, 0.45, -0.05);
+    ear.rotation.set(-0.3, 0, sx > 0 ? 0.3 : -0.3);
+    head.add(ear);
+  }
+  papa.add(head);
+
+  // arms
+  function makeArm(side) {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * 0.42, 1.05, 0);
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6, 6), matBlueDk);
+    arm.position.y = -0.3; arm.castShadow = true;
+    pivot.add(arm);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), matPink);
+    hand.position.y = -0.62;
+    pivot.add(hand);
+    return pivot;
+  }
+  const armL = makeArm(-1);
+  const armR = makeArm( 1);
+  papa.add(armL); papa.add(armR);
+  papa.userData.armL = armL;
+  papa.userData.armR = armR;
+
+  // legs
+  function makeLeg(side) {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * 0.2, 0.5, 0);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.45, 6), matBlueDk);
+    leg.position.y = -0.225; leg.castShadow = true;
+    pivot.add(leg);
+    const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.12, 0.32), matBlack);
+    shoe.position.set(0, -0.49, 0.08);
+    pivot.add(shoe);
+    return pivot;
+  }
+  const legL = makeLeg(-1);
+  const legR = makeLeg( 1);
+  papa.add(legL); papa.add(legR);
+  papa.userData.legL = legL;
+  papa.userData.legR = legR;
+
+  return papa;
+}
+
+// ---- Bike ----
+function createBike() {
+  const bike = new THREE.Group();
+  const frameMat = matBlueDk;
+  const tireMat  = matBlack;
+  const wheelGeo = new THREE.TorusGeometry(0.4, 0.08, 8, 22);
+
+  function makeWheel(z) {
+    const pivot = new THREE.Group();
+    pivot.position.set(0, 0.4, z);
+    pivot.rotation.y = Math.PI / 2;
+    const tire = new THREE.Mesh(wheelGeo, tireMat); tire.castShadow = true;
+    pivot.add(tire);
+    const disk = new THREE.Mesh(new THREE.CircleGeometry(0.34, 12),
+      new THREE.MeshLambertMaterial({ color: 0xd0d0d0, side: THREE.DoubleSide }));
+    pivot.add(disk);
+    pivot.userData.tire = tire; pivot.userData.disk = disk;
+    return pivot;
+  }
+  const fw = makeWheel( 0.7); bike.add(fw);
+  const bw = makeWheel(-0.7); bike.add(bw);
+  bike.userData.frontWheel = fw;
+  bike.userData.backWheel  = bw;
+
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.2, 8), frameMat);
+  top.position.set(0, 0.7, 0); top.rotation.x = Math.PI / 2; top.castShadow = true; bike.add(top);
+  const diag = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.0, 8), frameMat);
+  diag.position.set(0, 0.55, -0.05); diag.rotation.x = Math.PI / 2 + 0.5; bike.add(diag);
+  const seatPost = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.55, 6), frameMat);
+  seatPost.position.set(0, 0.85, -0.4); bike.add(seatPost);
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.08, 0.38), matBlack);
+  seat.position.set(0, 1.05, -0.4); seat.castShadow = true; bike.add(seat);
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 6), frameMat);
+  stem.position.set(0, 0.95, 0.55); bike.add(stem);
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.7, 6), matBlack);
+  bar.position.set(0, 1.2, 0.55); bar.rotation.z = Math.PI / 2; bike.add(bar);
+  for (const sx of [-0.34, 0.34]) {
+    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.12, 6), matRedDk);
+    grip.position.set(sx, 1.2, 0.55); grip.rotation.z = Math.PI / 2; bike.add(grip);
+  }
+  const bellPivot = new THREE.Group();
+  bellPivot.position.set(0.25, 1.25, 0.55);
+  const bell = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2), matYellow);
+  bell.castShadow = true; bellPivot.add(bell);
+  bike.add(bellPivot); bike.userData.bell = bellPivot;
+  const basket = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.4),
+    new THREE.MeshLambertMaterial({ color: 0xa1887f }));
+  basket.position.set(0, 1.0, 0.85); basket.castShadow = true; bike.add(basket);
+  const crank = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.18, 8), matBlack);
+  crank.position.set(0, 0.4, 0); crank.rotation.z = Math.PI / 2; bike.add(crank);
+
+  return bike;
+}
+
+// ---- Car ----
+function createCar() {
+  const car = new THREE.Group();
+  const bodyMat = new THREE.MeshLambertMaterial({ color: 0xe53935 });
+  const bodyDk  = new THREE.MeshLambertMaterial({ color: 0xb71c1c });
+  const lower = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.55, 4.0), bodyMat);
+  lower.position.y = 0.55; lower.castShadow = true; lower.receiveShadow = true; car.add(lower);
+  const hood = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.18, 1.4), bodyMat);
+  hood.position.set(0, 0.92, 1.2); hood.castShadow = true; car.add(hood);
+  const trunk = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.18, 1.0), bodyMat);
+  trunk.position.set(0, 0.92, -1.4); trunk.castShadow = true; car.add(trunk);
+  const seatBack = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.65, 0.18), bodyMat);
+  seatBack.position.set(0, 1.18, -0.85); car.add(seatBack);
+  const dash = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.45, 0.18), bodyDk);
+  dash.position.set(0, 1.07, 0.52); car.add(dash);
+  for (const sx of [-1.04, 1.04]) {
+    const side = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.55, 1.6), bodyMat);
+    side.position.set(sx, 1.13, -0.15); car.add(side);
+  }
+  const bumperMat = new THREE.MeshLambertMaterial({ color: 0x424242 });
+  const fBumper = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.28, 0.2), bumperMat);
+  fBumper.position.set(0, 0.42, 2.05); car.add(fBumper);
+  const bBumper = fBumper.clone(); bBumper.position.z = -2.05; car.add(bBumper);
+  for (const sx of [-0.7, 0.7]) {
+    const h = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 10),
+      new THREE.MeshBasicMaterial({ color: 0xfff59d }));
+    h.position.set(sx, 0.7, 2.0); h.scale.set(1, 1, 0.5); car.add(h);
+  }
+  for (const sx of [-0.7, 0.7]) {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8),
+      new THREE.MeshBasicMaterial({ color: 0xff5252 }));
+    b.position.set(sx, 0.7, -2.0); b.scale.set(1, 0.7, 0.4); car.add(b);
+  }
+  function makeCarWheel(x, z) {
+    const pivot = new THREE.Group();
+    pivot.position.set(x, 0.38, z);
+    const spinner = new THREE.Group(); pivot.add(spinner);
+    const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.28, 18),
+      new THREE.MeshLambertMaterial({ color: 0x222222 }));
+    tire.rotation.z = Math.PI / 2; tire.castShadow = true; spinner.add(tire);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.30, 12),
+      new THREE.MeshLambertMaterial({ color: 0xe0e0e0 }));
+    hub.rotation.z = Math.PI / 2; spinner.add(hub);
+    const marker = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.32, 0.05),
+      new THREE.MeshLambertMaterial({ color: 0x666666 }));
+    marker.position.set(0, 0.05, 0); spinner.add(marker);
+    pivot.userData.spinner = spinner;
+    return pivot;
+  }
+  const wheels = [
+    makeCarWheel(-1.05,  1.3), makeCarWheel( 1.05,  1.3),
+    makeCarWheel(-1.05, -1.3), makeCarWheel( 1.05, -1.3),
+  ];
+  wheels.forEach(w => car.add(w));
+  car.userData.wheels = wheels;
+  const steerGroup = new THREE.Group();
+  steerGroup.position.set(0, 1.18, 0.35);
+  const sw = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.025, 6, 16),
+    new THREE.MeshLambertMaterial({ color: 0x222222 }));
+  sw.rotation.x = -0.4; steerGroup.add(sw);
+  car.add(steerGroup); car.userData.steeringWheel = steerGroup;
+  const plate = makeTextSign('PEPA-1', 1.0, 0.3, '#ffffff', '#222222');
+  plate.position.set(0, 0.55, -2.06); plate.rotation.y = Math.PI; car.add(plate);
+  const horn = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.05, 12),
+    new THREE.MeshLambertMaterial({ color: 0xe0e0e0 }));
+  horn.position.set(0, 1.01, 1.3); car.add(horn);
+  return car;
+}
+
+// ---- Build characters and vehicles (separate top-level objects) ----
+const peppa = createPeppa();
+const papa  = createPapa();
+const bike  = createBike();
+const car   = createCar();
+scene.add(peppa); scene.add(papa);
+scene.add(bike);  scene.add(car);
+
+// Mount config: where each character sits in each vehicle
+const seats = {
+  bike: {
+    peppa: { y: 0.7,  z: 0 },
+    papa:  { y: 0.65, z: 0 },
+  },
+  car: {
+    peppa: { y: 0.55, z: 0.05 },
+    papa:  { y: 0.50, z: 0.05 },
+  },
+};
+
+// state: who is mounted where
+const mounts = { peppa: null, papa: null }; // null = on foot, else bike or car
+
+function vehicleType(v) {
+  return v === bike ? 'bike' : (v === car ? 'car' : null);
+}
+
+function mount(charName, vehicle) {
+  const ch = (charName === 'peppa') ? peppa : papa;
+  // remove from current parent (scene or other vehicle)
+  if (ch.parent) ch.parent.remove(ch);
+  vehicle.add(ch);
+  const cfg = seats[vehicleType(vehicle)][charName];
+  ch.position.set(0, cfg.y, cfg.z);
+  ch.rotation.set(0, 0, 0);
+  mounts[charName] = vehicle;
+}
+
+function dismount(charName) {
+  const ch = (charName === 'peppa') ? peppa : papa;
+  const v = mounts[charName];
+  if (!v) return;
+  // world position of the char before removing from vehicle
+  const wp = new THREE.Vector3();
+  ch.getWorldPosition(wp);
+  v.remove(ch);
+  scene.add(ch);
+  // step out to the side of the vehicle
+  const sideX = Math.cos(v.rotation.y) * 1.6;
+  const sideZ = -Math.sin(v.rotation.y) * 1.6;
+  ch.position.set(wp.x + sideX, 0, wp.z + sideZ);
+  ch.rotation.set(0, v.rotation.y, 0);
+  mounts[charName] = null;
+}
+
+// initially: peppa on bike at start, papa in car (parked just next to bike)
+bike.position.set(0, 0, -78);
+bike.rotation.y = 0;
+car.position.set(3.5, 0, -80);
+car.rotation.y = 0;
+mount('peppa', bike);
+mount('papa', car);
+
+let currentChar = 'peppa';
+
+// ---- Friends ----
+function createSheep() {
+  const s = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 10), matWhite);
+  body.position.y = 0.5; body.scale.set(1.25, 1, 1); body.castShadow = true; s.add(body);
+  const headM = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8),
+    new THREE.MeshLambertMaterial({ color: 0xefebe9 }));
+  headM.position.set(0, 0.7, 0.45); headM.castShadow = true; s.add(headM);
+  for (const [x, z] of [[-0.2, 0.2], [0.2, 0.2], [-0.2, -0.2], [0.2, -0.2]]) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.3, 6), matBlack);
+    leg.position.set(x, 0.15, z); s.add(leg);
+  }
+  return s;
+}
+function createGeorge() {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.6, 12),
+    new THREE.MeshLambertMaterial({ color: 0x66bb6a }));
+  body.position.y = 0.3; body.castShadow = true; g.add(body);
+  const headM = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), matPink);
+  headM.position.y = 0.78; headM.scale.set(1, 0.95, 0.9); headM.castShadow = true; g.add(headM);
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), matPink);
+  snout.position.set(0, 0.72, 0.28); g.add(snout);
+  for (const sx of [-0.09, 0.09]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), matBlack);
+    eye.position.set(sx, 0.86, 0.22); g.add(eye);
+  }
+  return g;
+}
+const friends = [];
+const s1 = createSheep(); s1.position.set(-12, 0, -30); scene.add(s1); friends.push(s1);
+const s2 = createSheep(); s2.position.set( 11, 0,  -8); scene.add(s2); friends.push(s2);
+const george = createGeorge(); george.position.set(7, 0, -82); scene.add(george); friends.push(george);
+
+// ---- Audio ----
+let audioCtx = null;
+function getAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch (e) { return null; }
+  }
+  return audioCtx;
+}
+function playBell() {
+  const ctx = getAudio(); if (!ctx) return;
+  const osc = ctx.createOscillator(), gain = ctx.createGain();
+  osc.frequency.setValueAtTime(1300, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(700, ctx.currentTime + 0.4);
+  gain.gain.setValueAtTime(0.25, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime + 0.5);
+}
+function playHonk() {
+  const ctx = getAudio(); if (!ctx) return;
+  const osc = ctx.createOscillator(), osc2 = ctx.createOscillator(), gain = ctx.createGain();
+  osc.type = 'square'; osc.frequency.value = 280;
+  osc2.type = 'square'; osc2.frequency.value = 350;
+  const t = ctx.currentTime;
+  gain.gain.setValueAtTime(0.001, t);
+  gain.gain.exponentialRampToValueAtTime(0.18, t + 0.02);
+  gain.gain.setValueAtTime(0.18, t + 0.28);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+  osc.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
+  osc.start(t); osc2.start(t);
+  osc.stop(t + 0.42); osc2.stop(t + 0.42);
+}
+function playJump() {
+  const ctx = getAudio(); if (!ctx) return;
+  const osc = ctx.createOscillator(), gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(330, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.18);
+  gain.gain.setValueAtTime(0.001, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime + 0.25);
+}
+function playSplash() {
+  const ctx = getAudio(); if (!ctx) return;
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.45, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 1500;
+  const gain = ctx.createGain(); gain.gain.value = 0.45;
+  src.connect(filter).connect(gain).connect(ctx.destination);
+  src.start();
+}
+function playWin() {
+  const ctx = getAudio(); if (!ctx) return;
+  const notes = [523, 659, 784, 1047];
+  notes.forEach((freq, i) => {
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = 'triangle'; osc.frequency.value = freq;
+    const t0 = ctx.currentTime + i * 0.16;
+    gain.gain.setValueAtTime(0.001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.3, t0 + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.35);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0); osc.stop(t0 + 0.4);
+  });
+}
+
+// ---- Physics params per mode ----
+const physics = {
+  bike: { maxSpeed: 8,  accel: 9,  friction: 2.2, turn: 1.9, camDist: 6, camHeight: 3,   radius: 0.9, lookAtY: 1 },
+  car:  { maxSpeed: 13, accel: 10, friction: 2.0, turn: 1.5, camDist: 8, camHeight: 4,   radius: 1.5, lookAtY: 1 },
+  foot: { maxSpeed: 3.2,accel: 12, friction: 8,   turn: 4.2, camDist: 4, camHeight: 2.4, radius: 0.4, lookAtY: 1 },
+};
+
+function activeChar() { return currentChar === 'peppa' ? peppa : papa; }
+function activeRig()  { return mounts[currentChar] || activeChar(); }
+function activeMode() {
+  const v = mounts[currentChar];
+  if (v === bike) return 'bike';
+  if (v === car) return 'car';
+  return 'foot';
+}
+function activeParams() { return physics[activeMode()]; }
+
+// ---- UI ----
+const distEl = document.getElementById('dist-val');
+const messageEl = document.getElementById('message');
+const exhibitEl = document.getElementById('exhibit-panel');
+const hintEl = document.getElementById('hint');
+const titleEl = document.getElementById('ui-title');
+
+function showMessage(text, sub) {
+  messageEl.innerHTML = text + (sub ? `<small>${sub}</small>` : '');
+  messageEl.style.display = 'block';
+}
+function hideMessage() { messageEl.style.display = 'none'; }
+
+function updateTitle() {
+  const mode = activeMode();
+  const who = currentChar === 'peppa' ? '🐷 Peppa' : '🐽 Papa Pig';
+  const what = mode === 'bike' ? 'à vélo' : mode === 'car' ? 'en voiture' : 'à pied';
+  titleEl.textContent = `${who} ${what}`;
+}
+
+// ---- Input ----
+const keys = {};
+let bellAnim = 0;
+let pressedFKey = false, pressedCKey = false, pressedRKey = false;
+let jumpVel = 0, jumpY = 0;
+
+function tryMountNearby() {
+  const ch = activeChar();
+  let nearestV = null, nearestD = 4;
+  for (const v of [bike, car]) {
+    if (mounts.peppa === v || mounts.papa === v) continue; // occupied
+    const dx = v.position.x - ch.position.x;
+    const dz = v.position.z - ch.position.z;
+    const d = Math.sqrt(dx * dx + dz * dz);
+    if (d < nearestD) { nearestD = d; nearestV = v; }
+  }
+  if (nearestV) {
+    mount(currentChar, nearestV);
+    speed = 0; heading = nearestV.rotation.y;
+    updateTitle();
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+  if (e.code === 'Space') {
+    const m = activeMode();
+    if (m === 'bike') { playBell(); bellAnim = 1; }
+    else if (m === 'car') { playHonk(); bellAnim = 1; }
+    else { // foot — small jump
+      if (jumpY === 0) { jumpVel = 4; playJump(); }
+    }
+  }
+  if (e.code === 'KeyC' && !pressedCKey) {
+    pressedCKey = true;
+    if (!won) {
+      currentChar = (currentChar === 'peppa') ? 'papa' : 'peppa';
+      const newRig = activeRig();
+      heading = newRig.rotation.y;
+      speed = 0;
+      updateTitle();
+    }
+  }
+  if (e.code === 'KeyF' && !pressedFKey) {
+    pressedFKey = true;
+    if (!won) {
+      if (mounts[currentChar]) {
+        dismount(currentChar);
+        const ch = activeChar();
+        heading = ch.rotation.y;
+        speed = 0;
+        updateTitle();
+      } else {
+        tryMountNearby();
+      }
+    }
+  }
+  if (e.code === 'KeyR' && !pressedRKey) {
+    pressedRKey = true;
+    if (won) {
+      won = false;
+      // reset positions
+      bike.position.set(0, 0, -78); bike.rotation.y = 0;
+      car.position.set(3.5, 0, -80); car.rotation.y = 0;
+      // remount both characters on their original vehicles
+      if (!mounts.peppa) mount('peppa', bike); else { /* still mounted somewhere */ }
+      if (!mounts.papa)  mount('papa',  car);  else { /* still mounted somewhere */ }
+      speed = 0; heading = 0;
+      hideMessage();
+    }
+  }
+});
+document.addEventListener('keyup', (e) => {
+  keys[e.code] = false;
+  if (e.code === 'KeyC') pressedCKey = false;
+  if (e.code === 'KeyF') pressedFKey = false;
+  if (e.code === 'KeyR') pressedRKey = false;
+});
+
+// Start overlay
+const startOverlay = document.getElementById('start-overlay');
+startOverlay.querySelectorAll('.choice').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const c = getAudio();
+    if (c && c.state === 'suspended') c.resume();
+    currentChar = btn.dataset.vehicle; // 'peppa' or 'papa'
+    heading = activeRig().rotation.y;
+    speed = 0;
+    updateTitle();
+    startOverlay.style.display = 'none';
+  });
+});
+
+// ---- Game state ----
+let speed = 0;
+let heading = 0;
+let lastInPuddle = false;
+let won = false;
+let pedalPhase = 0;
+let walkPhase = 0;
+
+camera.position.set(0, 4, -85);
+camera.lookAt(0, 1, -78);
+
+// ---- Main loop ----
+const clock = new THREE.Clock();
+
+function tick() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const params = activeParams();
+  const rig = activeRig();
+  const mode = activeMode();
+
+  // --- throttle ---
+  let throttling = false;
+  if (keys['ArrowUp']   || keys['KeyW'] || keys['KeyZ']) { speed = Math.min(speed + params.accel * dt,  params.maxSpeed); throttling = true; }
+  if (keys['ArrowDown'] || keys['KeyS'])                  { speed = Math.max(speed - params.accel * dt, -params.maxSpeed * 0.5); throttling = true; }
+  if (!throttling) {
+    if (speed > 0) speed = Math.max(0, speed - params.friction * dt);
+    else           speed = Math.min(0, speed + params.friction * dt);
+  }
+
+  // --- turn ---
+  let steerInput = 0;
+  if (mode === 'foot') {
+    // on foot: turning works even when standing still, faster
+    if (keys['ArrowLeft']  || keys['KeyA'] || keys['KeyQ']) { heading += params.turn * dt; steerInput = -1; }
+    if (keys['ArrowRight'] || keys['KeyD'])                 { heading -= params.turn * dt; steerInput =  1; }
+  } else {
+    if (Math.abs(speed) > 0.05) {
+      const dir = speed >= 0 ? 1 : -1;
+      if (keys['ArrowLeft']  || keys['KeyA'] || keys['KeyQ']) { heading += params.turn * dt * dir; steerInput = -1; }
+      if (keys['ArrowRight'] || keys['KeyD'])                 { heading -= params.turn * dt * dir; steerInput =  1; }
+    } else {
+      if (keys['ArrowLeft']  || keys['KeyA'] || keys['KeyQ']) steerInput = -1;
+      if (keys['ArrowRight'] || keys['KeyD'])                 steerInput =  1;
+    }
+  }
+
+  // --- move ---
+  rig.rotation.y = heading;
+  const fwdX = Math.sin(heading);
+  const fwdZ = Math.cos(heading);
+  rig.position.x += fwdX * speed * dt;
+  rig.position.z += fwdZ * speed * dt;
+  rig.position.x = Math.max(-95, Math.min(95, rig.position.x));
+  rig.position.z = Math.max(-95, Math.min(115, rig.position.z));
+
+  // collisions against buildings
+  applyCollisions(rig.position, params.radius);
+
+  // --- jump (foot only) ---
+  if (mode === 'foot') {
+    jumpY += jumpVel * dt;
+    jumpVel -= 12 * dt; // gravity
+    if (jumpY <= 0) { jumpY = 0; jumpVel = 0; }
+    rig.position.y = jumpY;
+  } else {
+    rig.position.y = 0;
+  }
+
+  // --- mode-specific animations ---
+  if (mode === 'bike') {
+    const wd = speed * dt / 0.4;
+    bike.userData.frontWheel.userData.tire.rotation.z -= wd;
+    bike.userData.frontWheel.userData.disk.rotation.z -= wd;
+    bike.userData.backWheel.userData.tire.rotation.z  -= wd;
+    bike.userData.backWheel.userData.disk.rotation.z  -= wd;
+
+    pedalPhase += speed * dt * 2.2;
+    const ch = peppa; // whoever is on bike, animate their legs
+    if (mounts.peppa === bike) animatePedal(peppa, pedalPhase);
+    if (mounts.papa  === bike) animatePedal(papa,  pedalPhase);
+
+    if (bellAnim > 0) {
+      bike.userData.bell.rotation.z = Math.sin(performance.now() * 0.05) * 0.5 * bellAnim;
+      bellAnim = Math.max(0, bellAnim - dt * 2);
+    } else bike.userData.bell.rotation.z = 0;
+  } else if (mode === 'car') {
+    const wd = speed * dt / 0.4;
+    for (const w of car.userData.wheels) w.userData.spinner.rotation.x -= wd;
+    const target = steerInput * 0.7;
+    car.userData.steeringWheel.rotation.z += (target - car.userData.steeringWheel.rotation.z) * 0.2;
+    if (bellAnim > 0) bellAnim = Math.max(0, bellAnim - dt * 2);
+  } else { // foot
+    const ch = activeChar();
+    walkPhase += Math.abs(speed) * dt * 3;
+    const moving = Math.abs(speed) > 0.1 ? 1 : 0;
+    const amp = 0.6 * Math.min(1, Math.abs(speed) / 1.5);
+    ch.userData.legL.rotation.x = Math.sin(walkPhase) * amp;
+    ch.userData.legR.rotation.x = Math.sin(walkPhase + Math.PI) * amp;
+    ch.userData.armL.rotation.x = Math.sin(walkPhase + Math.PI) * amp * 0.7;
+    ch.userData.armR.rotation.x = Math.sin(walkPhase) * amp * 0.7;
+    // gentle bob
+    if (mode === 'foot' && jumpY === 0) {
+      ch.position.y = Math.abs(Math.sin(walkPhase * 2)) * 0.04 * moving;
+    }
+  }
+
+  // --- puddle splash ---
+  let inPuddle = false;
+  for (const p of puddles) {
+    const dx = rig.position.x - p.x, dz = rig.position.z - p.z;
+    if (dx * dx + dz * dz < (p.size + 0.4) * (p.size + 0.4)) { inPuddle = true; break; }
+  }
+  if (inPuddle && !lastInPuddle && Math.abs(speed) > 1.5) playSplash();
+  lastInPuddle = inPuddle;
+
+  // --- clouds drift ---
+  for (const c of clouds) {
+    c.position.x += dt * 0.6;
+    if (c.position.x > 160) c.position.x = -160;
+  }
+
+  // --- friends face the player ---
+  for (const f of friends) {
+    const dx = rig.position.x - f.position.x;
+    const dz = rig.position.z - f.position.z;
+    if (dx * dx + dz * dz < 600) {
+      f.lookAt(rig.position.x, f.position.y, rig.position.z);
+    }
+  }
+  if (school.userData.flag) {
+    school.userData.flag.rotation.y = Math.sin(performance.now() * 0.003) * 0.25;
+  }
+
+  // --- museum: roof hide when inside, door auto-open when on foot near it ---
+  const inMuseum = (rig.position.x > MUSEUM_X - 6.5 && rig.position.x < MUSEUM_X + 6.5 &&
+                    rig.position.z > MUSEUM_Z - 5.5 && rig.position.z < MUSEUM_Z + 5.5);
+  museum.userData.roof.visible = !inMuseum;
+
+  // door: open if on foot near the door entrance
+  const doorWorld = new THREE.Vector3();
+  museum.userData.door.getWorldPosition(doorWorld);
+  // entrance front area: just outside south face
+  const distToEntrance = Math.hypot(rig.position.x - MUSEUM_X, rig.position.z - (MUSEUM_Z - 6));
+  const wantOpen = (mode === 'foot' && distToEntrance < 4) || inMuseum;
+  const targetAng = wantOpen ? Math.PI / 2 * 0.95 : 0;
+  museum.userData.door.rotation.y += (targetAng - museum.userData.door.rotation.y) * 0.12;
+
+  // --- exhibit proximity panel ---
+  let nearestExhibit = null, nearestExDist = 999;
+  if (inMuseum) {
+    for (const ex of museum.userData.exhibits) {
+      const ep = new THREE.Vector3();
+      ex.getWorldPosition(ep);
+      const dx = rig.position.x - ep.x, dz = rig.position.z - ep.z;
+      const d = Math.sqrt(dx * dx + dz * dz);
+      if (d < (ex.userData.zoneRadius || 3) && d < nearestExDist) {
+        nearestExDist = d; nearestExhibit = ex;
+      }
+    }
+  }
+  if (nearestExhibit) {
+    exhibitEl.textContent = nearestExhibit.userData.label;
+    exhibitEl.style.display = 'block';
+  } else {
+    exhibitEl.style.display = 'none';
+  }
+
+  // --- contextual hint ---
+  let hintText = '';
+  if (mode === 'foot') {
+    // near a free vehicle?
+    let nearestFreeV = null, nearestVD = 4;
+    for (const v of [bike, car]) {
+      if (mounts.peppa === v || mounts.papa === v) continue;
+      const d = Math.hypot(v.position.x - rig.position.x, v.position.z - rig.position.z);
+      if (d < nearestVD) { nearestVD = d; nearestFreeV = v; }
+    }
+    if (nearestFreeV) {
+      const what = nearestFreeV === bike ? 'le vélo 🚲' : 'la voiture 🚗';
+      hintText = `Appuie sur <span class="key">F</span> pour monter sur ${what}`;
+    } else if (distToEntrance < 6 && !inMuseum) {
+      hintText = `Entre dans le musée 🏛️`;
+    }
+  } else {
+    // mounted - if near free spot near museum, hint to dismount
+    if (distToEntrance < 8 && !inMuseum) {
+      hintText = `<span class="key">F</span> pour descendre et entrer dans le musée 🏛️`;
+    }
+  }
+  if (hintText) { hintEl.innerHTML = hintText; hintEl.style.display = 'block'; }
+  else hintEl.style.display = 'none';
+
+  // --- camera follow ---
+  const camDist = params.camDist;
+  const camHeight = params.camHeight;
+  const camX = rig.position.x - fwdX * camDist;
+  const camZ = rig.position.z - fwdZ * camDist;
+  camera.position.x += (camX - camera.position.x) * 0.1;
+  camera.position.y += (rig.position.y + camHeight - camera.position.y) * 0.1;
+  camera.position.z += (camZ - camera.position.z) * 0.1;
+  camera.lookAt(rig.position.x, rig.position.y + params.lookAtY, rig.position.z);
+
+  // --- distance to school + win ---
+  const sxT = 15, szT = 95;
+  const dist = Math.round(Math.hypot(rig.position.x - sxT, rig.position.z - szT));
+  distEl.textContent = dist;
+
+  if (!won && dist < 9) {
+    won = true;
+    const who = currentChar === 'peppa' ? 'Peppa' : 'Papa Pig';
+    showMessage(`🎉 Bravo ${who} ! 🎉`,
+      "Tu es arrivé(e) à l'école !<br>Appuie sur <b>R</b> pour recommencer");
+    playWin();
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+
+function animatePedal(ch, phase) {
+  ch.userData.legL.rotation.x = Math.sin(phase) * 0.45;
+  ch.userData.legR.rotation.x = Math.sin(phase + Math.PI) * 0.45;
+}
+
+tick();
+</script>
+</body>
+</html>
