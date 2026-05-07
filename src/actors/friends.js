@@ -129,6 +129,136 @@ export function createPedro() {
   return p;
 }
 
+// ---- Granny Pig (purple dress, grey hair bun, half-moon glasses) ----
+export function createGrannyPig() {
+  const m = new THREE.Group();
+  // dress (purple)
+  const body = new THREE.Mesh(
+    new THREE.ConeGeometry(0.5, 1.1, 12),
+    new THREE.MeshLambertMaterial({ color: 0xab47bc }),
+  );
+  body.position.y = 0.55; body.castShadow = true; m.add(body);
+  // head
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.5, 14, 12), matPink);
+  skull.position.y = 1.4; skull.scale.set(1, 0.95, 0.92); skull.castShadow = true;
+  m.add(skull);
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 10), matPink);
+  snout.position.set(0, 1.35, 0.46); snout.scale.set(1, 0.85, 1);
+  m.add(snout);
+  // grey hair bun on top
+  const bun = new THREE.Mesh(
+    new THREE.SphereGeometry(0.3, 12, 10),
+    new THREE.MeshLambertMaterial({ color: 0xcfd8dc }),
+  );
+  bun.position.set(0, 1.85, -0.05);
+  bun.castShadow = true;
+  m.add(bun);
+  // tiny pink ribbon on bun
+  const ribbon = new THREE.Mesh(
+    new THREE.BoxGeometry(0.18, 0.05, 0.05),
+    new THREE.MeshLambertMaterial({ color: 0xff4081 }),
+  );
+  ribbon.position.set(0, 1.95, 0.18);
+  ribbon.rotation.z = 0.3;
+  m.add(ribbon);
+  // half-moon glasses (gold rings, small)
+  const goldRing = new THREE.MeshBasicMaterial({ color: 0xffd54f });
+  for (const sx of [-0.18, 0.18]) {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.13, 16), goldRing);
+    ring.position.set(sx, 1.46, 0.42); m.add(ring);
+  }
+  // eyes
+  for (const sx of [-0.17, 0.17]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), matWhite);
+    eye.position.set(sx, 1.54, 0.36); m.add(eye);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), matBlack);
+    pupil.position.set(sx, 1.54, 0.41); m.add(pupil);
+  }
+  // nostrils
+  for (const sx of [-0.07, 0.07]) {
+    const n = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 8), matBlack);
+    n.position.set(sx, 1.32, 0.66); m.add(n);
+  }
+  // smile
+  const mouth = new THREE.Mesh(
+    new THREE.TorusGeometry(0.07, 0.015, 6, 12, Math.PI), matBlack,
+  );
+  mouth.position.set(0, 1.2, 0.6); mouth.rotation.x = Math.PI;
+  m.add(mouth);
+  // ears
+  for (const sx of [-0.3, 0.3]) {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.22, 4), matPink);
+    ear.position.set(sx, 1.7, -0.05);
+    ear.rotation.set(-0.3, 0, sx > 0 ? 0.3 : -0.3);
+    m.add(ear);
+  }
+  return m;
+}
+
+// ---- Grandpa Pig (blue shirt, white beard, yellow cap) ----
+export function createGrandpaPig() {
+  const p = new THREE.Group();
+  // shirt
+  const torso = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.4, 0.5, 0.65, 12),
+    new THREE.MeshLambertMaterial({ color: 0x1565c0 }),
+  );
+  torso.position.y = 0.75; torso.castShadow = true; p.add(torso);
+  // head
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 14), matPink);
+  skull.position.y = 1.4; skull.scale.set(1, 0.95, 0.92); skull.castShadow = true;
+  p.add(skull);
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 10), matPink);
+  snout.position.set(0, 1.35, 0.46); snout.scale.set(1, 0.85, 1);
+  p.add(snout);
+  // big white beard
+  const beardMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
+  for (let i = 0; i < 20; i++) {
+    const stub = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 6, 5), beardMat,
+    );
+    const t = (i / 19) * Math.PI - Math.PI / 2;
+    stub.position.set(
+      Math.sin(t) * 0.34,
+      1.18 + (Math.random() - 0.5) * 0.12,
+      0.3 + Math.cos(t) * 0.18 + Math.random() * 0.04,
+    );
+    p.add(stub);
+  }
+  // round glasses
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0x1a1a1a });
+  for (const sx of [-0.18, 0.18]) {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.13, 0.17, 18), ringMat);
+    ring.position.set(sx, 1.48, 0.42); p.add(ring);
+  }
+  const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.025, 0.02), ringMat);
+  bridge.position.set(0, 1.48, 0.43); p.add(bridge);
+  // eyes (small)
+  for (const sx of [-0.18, 0.18]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), matBlack);
+    eye.position.set(sx, 1.48, 0.36); p.add(eye);
+  }
+  // yellow cap
+  const cap = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.45, 0.45, 0.18, 14),
+    new THREE.MeshLambertMaterial({ color: 0xffd54f }),
+  );
+  cap.position.y = 1.86; cap.castShadow = true; p.add(cap);
+  const brim = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.55, 0.55, 0.06, 14),
+    new THREE.MeshLambertMaterial({ color: 0xffc107 }),
+  );
+  brim.position.y = 1.79; p.add(brim);
+  // ears
+  for (const sx of [-0.3, 0.3]) {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.22, 4), matPink);
+    ear.position.set(sx, 1.7, -0.05);
+    ear.rotation.set(-0.3, 0, sx > 0 ? 0.3 : -0.3);
+    p.add(ear);
+  }
+  return p;
+}
+
 // ---- Mama Pig (taller, yellow dress) ----
 export function createMamaPig() {
   const m = new THREE.Group();

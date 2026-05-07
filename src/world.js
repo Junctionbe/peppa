@@ -4,8 +4,10 @@
 import * as THREE from 'three';
 import {
   scene, matGrass, matRoad, matBrown, matLeaf, matCloud, matMud, matBlack,
+  matWhite, matYellow, makeTextSign,
 } from './setup.js';
-import { createSheep } from './actors/friends.js';
+import { createSheep, createGrannyPig, createGrandpaPig } from './actors/friends.js';
+import { colliders } from './physics.js';
 
 // ---- Ground & road ----
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), matGrass);
@@ -99,6 +101,11 @@ function isTreeSpotFree(x, z) {
   if (x >  19 && x < 31  && z > 45 && z < 55)   return false;     // hotel
   if (x >   3 && x < 23  && Math.abs(z - 50) < 3) return false;   // hotel path
   if (x >   6 && x < 14  && z > -25 && z < -15) return false;     // food truck
+  if (x > -10 && x < 0   && z > 73 && z < 78)   return false;     // ice cream stand
+  // big circle around the lake center (-55, 10) radius ~10
+  const ldx = x - (-55), ldz = z - 10;
+  if (ldx * ldx + ldz * ldz < 100) return false;                   // lake
+  if (x > -32 && x < -22 && z < -72 && z > -82) return false;     // garden
   return true;
 }
 let placed = 0;
@@ -257,3 +264,163 @@ const sp3 = createSignpost([
 sp3.position.set(3.5, 0, 45);
 sp3.rotation.y = -Math.PI / 2;
 scene.add(sp3);
+
+// ---- Lake (south-west) with Grandpa Pig in his boat ----
+const LAKE_X = -55, LAKE_Z = 10, LAKE_R = 8;
+const lake = new THREE.Mesh(
+  new THREE.CircleGeometry(LAKE_R, 32),
+  new THREE.MeshLambertMaterial({ color: 0x29b6f6, transparent: true, opacity: 0.9 }),
+);
+lake.rotation.x = -Math.PI / 2;
+lake.position.set(LAKE_X, 0.04, LAKE_Z);
+lake.receiveShadow = true;
+scene.add(lake);
+
+// Lake collider — block the player from entering the water (for vehicles).
+// Approximate the circle with an inscribed square + 4 outer chunks. Simple
+// AABB inside the circle.
+colliders.push({
+  minX: LAKE_X - LAKE_R * 0.7, maxX: LAKE_X + LAKE_R * 0.7,
+  minZ: LAKE_Z - LAKE_R * 0.7, maxZ: LAKE_Z + LAKE_R * 0.7,
+});
+
+// Decorative cattails at lake edge
+for (let i = 0; i < 8; i++) {
+  const ang = (i / 8) * Math.PI * 2 + Math.random() * 0.3;
+  const r = LAKE_R + 0.3 + Math.random() * 0.4;
+  const stalk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.04, 0.04, 1.2, 6),
+    new THREE.MeshLambertMaterial({ color: 0x66bb6a }),
+  );
+  stalk.position.set(LAKE_X + Math.cos(ang) * r, 0.6, LAKE_Z + Math.sin(ang) * r);
+  scene.add(stalk);
+  const tip = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.08, 0.08, 0.3, 8),
+    new THREE.MeshLambertMaterial({ color: 0x6d4c41 }),
+  );
+  tip.position.copy(stalk.position);
+  tip.position.y = 1.2;
+  scene.add(tip);
+}
+
+// Lake sign
+const lakeSign = makeTextSign('LAC', 1.8, 0.6, '#fff', '#1976d2');
+lakeSign.position.set(LAKE_X + LAKE_R + 1.2, 1.6, LAKE_Z + 4);
+lakeSign.rotation.y = Math.PI / 4;
+scene.add(lakeSign);
+const lakePost = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.08, 0.08, 1.6, 6), matBrown,
+);
+lakePost.position.set(LAKE_X + LAKE_R + 1.2, 0.8, LAKE_Z + 4);
+scene.add(lakePost);
+
+// Boat factory
+function createBoat() {
+  const b = new THREE.Group();
+  const hull = new THREE.Mesh(
+    new THREE.BoxGeometry(3, 0.7, 1.4),
+    new THREE.MeshLambertMaterial({ color: 0x6d4c41 }),
+  );
+  hull.position.y = 0.35; hull.castShadow = true; b.add(hull);
+  // tapered bow + stern (front and back wedges)
+  const bow = new THREE.Mesh(
+    new THREE.ConeGeometry(0.7, 0.7, 4),
+    new THREE.MeshLambertMaterial({ color: 0x6d4c41 }),
+  );
+  bow.position.set(1.7, 0.35, 0);
+  bow.rotation.set(0, Math.PI / 4, Math.PI / 2);
+  bow.scale.set(1, 1, 0.5);
+  b.add(bow);
+  // dark interior strip on top
+  const inside = new THREE.Mesh(
+    new THREE.BoxGeometry(2.7, 0.3, 1.1),
+    new THREE.MeshLambertMaterial({ color: 0x4e342e }),
+  );
+  inside.position.y = 0.55; b.add(inside);
+  // mast
+  const mast = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.05, 0.05, 2.2, 6),
+    new THREE.MeshLambertMaterial({ color: 0x6d4c41 }),
+  );
+  mast.position.set(0, 1.7, 0); mast.castShadow = true;
+  b.add(mast);
+  // triangular sail
+  const sailGeo = new THREE.BufferGeometry();
+  const verts = new Float32Array([
+    0.05, 0.7, 0,
+    0.05, 2.7, 0,
+    1.6, 0.8, 0,
+  ]);
+  sailGeo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+  sailGeo.setIndex([0, 1, 2]);
+  sailGeo.computeVertexNormals();
+  const sail = new THREE.Mesh(
+    sailGeo,
+    new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide }),
+  );
+  b.add(sail);
+  return b;
+}
+const boat = createBoat();
+boat.position.set(LAKE_X, 0.5, LAKE_Z);
+boat.rotation.y = 0.3;
+scene.add(boat);
+
+// Grandpa Pig in his boat
+const grandpaInBoat = createGrandpaPig();
+grandpaInBoat.position.set(LAKE_X - 0.8, 1.2, LAKE_Z);
+grandpaInBoat.rotation.y = -Math.PI / 2;
+scene.add(grandpaInBoat);
+npcs.push(grandpaInBoat);
+grandpaInBoat.userData.label = '👴 Grandpa Pig : « Belle journée pour naviguer ! »';
+grandpaInBoat.userData.zoneRadius = 8;
+
+// ---- Garden with bench, Granny Pig (west of the house) ----
+function createBench() {
+  const g = new THREE.Group();
+  const seat = new THREE.Mesh(
+    new THREE.BoxGeometry(2.5, 0.1, 0.5),
+    new THREE.MeshLambertMaterial({ color: 0x8d6e63 }),
+  );
+  seat.position.y = 0.5; seat.castShadow = true; g.add(seat);
+  const back = new THREE.Mesh(
+    new THREE.BoxGeometry(2.5, 0.7, 0.1),
+    new THREE.MeshLambertMaterial({ color: 0x8d6e63 }),
+  );
+  back.position.set(0, 0.85, -0.2); back.castShadow = true; g.add(back);
+  for (const sx of [-1.05, 1.05]) {
+    const leg = new THREE.Mesh(
+      new THREE.BoxGeometry(0.1, 0.5, 0.5),
+      new THREE.MeshLambertMaterial({ color: 0x6d4c41 }),
+    );
+    leg.position.set(sx, 0.25, 0); leg.castShadow = true; g.add(leg);
+  }
+  return g;
+}
+
+const GARDEN_X = -27, GARDEN_Z = -77;
+const bench = createBench();
+bench.position.set(GARDEN_X, 0, GARDEN_Z);
+bench.rotation.y = Math.PI;
+scene.add(bench);
+
+// Extra dense flowers around the bench
+for (let i = 0; i < 18; i++) {
+  const ang = Math.random() * Math.PI * 2;
+  const r = 1.8 + Math.random() * 2.5;
+  const flower = new THREE.Mesh(
+    new THREE.SphereGeometry(0.2, 6, 5),
+    new THREE.MeshLambertMaterial({ color: flowerColors[Math.floor(Math.random() * flowerColors.length)] }),
+  );
+  flower.position.set(GARDEN_X + Math.cos(ang) * r, 0.2, GARDEN_Z + Math.sin(ang) * r);
+  scene.add(flower);
+}
+
+// Granny Pig standing in front of bench
+const granny = createGrannyPig();
+granny.position.set(GARDEN_X + 0.8, 0, GARDEN_Z + 0.6);
+granny.rotation.y = -0.3;
+scene.add(granny);
+npcs.push(granny);
+granny.userData.label = '👵 Granny Pig : « Tu veux un petit gâteau ma chérie ? »';
+granny.userData.zoneRadius = 3;
