@@ -27,13 +27,21 @@ for (let z = -90; z <= 90; z += 5) {
   scene.add(dash);
 }
 
-// path branching off toward the museum
-const path = new THREE.Mesh(new THREE.PlaneGeometry(3, 22), matRoad);
-path.rotation.x = -Math.PI / 2;
-path.rotation.z = Math.PI / 2;
-path.position.set(-7, 0.02, 28);
-path.receiveShadow = true;
-scene.add(path);
+// path branching off toward the museum (west side)
+const museumPath = new THREE.Mesh(new THREE.PlaneGeometry(3, 22), matRoad);
+museumPath.rotation.x = -Math.PI / 2;
+museumPath.rotation.z = Math.PI / 2;
+museumPath.position.set(-7, 0.02, 28);
+museumPath.receiveShadow = true;
+scene.add(museumPath);
+
+// path branching off toward the hotel (east side)
+const hotelPath = new THREE.Mesh(new THREE.PlaneGeometry(3, 22), matRoad);
+hotelPath.rotation.x = -Math.PI / 2;
+hotelPath.rotation.z = Math.PI / 2;
+hotelPath.position.set(12, 0.02, 50);
+hotelPath.receiveShadow = true;
+scene.add(hotelPath);
 
 // ---- Hills ----
 function addHill(x, z, scale, color) {
@@ -88,6 +96,9 @@ function isTreeSpotFree(x, z) {
   if (x > -19 && x < -10 && Math.abs(z - 28) < 3) return false;   // museum path
   if (x > -23 && x < -7  && z < -83 && z > -97) return false;     // house
   if (x >   4 && x < 26  && z > 86  && z < 105) return false;     // school
+  if (x >  19 && x < 31  && z > 45 && z < 55)   return false;     // hotel
+  if (x >   3 && x < 23  && Math.abs(z - 50) < 3) return false;   // hotel path
+  if (x >   6 && x < 14  && z > -25 && z < -15) return false;     // food truck
   return true;
 }
 let placed = 0;

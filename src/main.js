@@ -7,21 +7,24 @@ import './world.js'; // side-effect: populates the environment
 
 import { state }              from './state.js';
 import { keys }               from './input.js';
-import { ui, updateTitle, setHint, setExhibit } from './ui.js';
-import { physics, applyCollisions } from './physics.js';
+import { ui, updateTitle, setHint, setExhibit, setPizzaCount } from './ui.js';
+import { physics, applyCollisions, colliders } from './physics.js';
 import { puddles, clouds, npcs as outdoorNpcs } from './world.js';
 import * as audio             from './audio.js';
 import {
   mount, dismount, activeChar, activeRig, activeMode, tryMountNearby, refreshAllSeats,
 } from './mount.js';
 
-import { createPeppa }   from './actors/peppa.js';
-import { createPapa }    from './actors/papa.js';
-import { createBike }    from './actors/bike.js';
-import { createCar }     from './actors/car.js';
-import { createHouse }   from './buildings/house.js';
-import { createSchool }  from './buildings/school.js';
-import { createMuseum }  from './buildings/museum.js';
+import { createPeppa }     from './actors/peppa.js';
+import { createPapa }      from './actors/papa.js';
+import { createBike }      from './actors/bike.js';
+import { createCar }       from './actors/car.js';
+import { createPizza }     from './actors/pizza.js';
+import { createFoodTruck } from './actors/foodtruck.js';
+import { createHouse }     from './buildings/house.js';
+import { createSchool }    from './buildings/school.js';
+import { createMuseum }    from './buildings/museum.js';
+import { createHotel }     from './buildings/hotel.js';
 
 // ---- Build characters and vehicles ----
 state.peppa = createPeppa();
@@ -34,14 +37,31 @@ scene.add(state.peppa, state.papa, state.bike, state.car);
 state.house  = createHouse(-15, -90); scene.add(state.house);
 state.school = createSchool(15, 95);  scene.add(state.school);
 state.museum = createMuseum(-12, 35); scene.add(state.museum);
+state.hotel  = createHotel(25, 50);   scene.add(state.hotel);
 
 // All buildings the player can enter (hollow with door + roof + exhibits)
-const enterables = [state.house, state.museum, state.school];
+const enterables = [state.house, state.museum, state.school, state.hotel];
 
 // All NPCs (used for look-at-player). Includes outdoor friends + indoor characters.
 const allNpcs = [...outdoorNpcs];
 for (const b of enterables) {
   allNpcs.push(...(b.userData.npcs || []));
+}
+
+// ---- Food truck + vendor ----
+{
+  const { truck, vendor } = createFoodTruck();
+  truck.position.set(12, 0, -20);
+  truck.rotation.y = Math.PI;             // service window faces west (toward road)
+  scene.add(truck);
+  state.foodTruck = truck;
+  // Vendor sheep on the road-side of the truck
+  vendor.position.set(10.4, 0, -20);
+  vendor.rotation.y = -Math.PI / 2;
+  scene.add(vendor);
+  allNpcs.push(vendor);
+  // Collider so vehicles can't drive through the truck
+  colliders.push({ minX: 10.75, maxX: 13.25, minZ: -22, maxZ: -18 });
 }
 
 // ---- Initial placement ----
@@ -68,7 +88,26 @@ ui.startOverlay.querySelectorAll('.choice').forEach(btn => {
 });
 
 // ---- Edge-triggered key handling ----
-let lastF = false, lastC = false, lastSpace = false;
+let lastF = false, lastC = false, lastSpace = false, lastE = false;
+
+function tryEatPizza() {
+  if (activeMode() !== 'foot' || !state.foodTruck) return;
+  const ch = activeChar();
+  const dx = state.foodTruck.position.x - ch.position.x;
+  const dz = state.foodTruck.position.z - ch.position.z;
+  if (dx * dx + dz * dz > 25) return; // > 5m away
+  // Drop any current pizza first
+  if (state.pizzaMesh && state.pizzaMesh.parent) {
+    state.pizzaMesh.parent.remove(state.pizzaMesh);
+  }
+  state.pizzaMesh = createPizza();
+  state.pizzaMesh.position.set(0, 1.4, 0.35);
+  ch.add(state.pizzaMesh);
+  state.pizzaTimer = 2.5;
+  state.pizzasEaten++;
+  setPizzaCount(state.pizzasEaten);
+  audio.playEat();
+}
 
 function checkEdges() {
   if (keys['Space'] && !lastSpace) {
@@ -102,6 +141,9 @@ function checkEdges() {
     updateTitle(state.currentChar, activeMode());
   }
   lastC = !!keys['KeyC'];
+
+  if (keys['KeyE'] && !lastE) tryEatPizza();
+  lastE = !!keys['KeyE'];
 }
 
 function animatePedal(ch, phase) {
@@ -210,6 +252,20 @@ function tick() {
     }
   }
 
+  // ---- pizza eating animation ----
+  if (state.pizzaTimer > 0) {
+    state.pizzaTimer -= dt;
+    if (state.pizzaMesh) {
+      const k = Math.max(0, state.pizzaTimer / 2.5);
+      state.pizzaMesh.scale.setScalar(0.1 + k * 0.9);
+      state.pizzaMesh.rotation.y += dt * 2;
+    }
+    if (state.pizzaTimer <= 0 && state.pizzaMesh && state.pizzaMesh.parent) {
+      state.pizzaMesh.parent.remove(state.pizzaMesh);
+      state.pizzaMesh = null;
+    }
+  }
+
   // ---- puddle splash ----
   let inPuddle = false;
   for (const p of puddles) {
@@ -274,32 +330,42 @@ function tick() {
 
   // ---- contextual hint ----
   let hintText = '';
-  if (mode === 'foot') {
-    const otherChar = state.currentChar === 'peppa' ? 'papa' : 'peppa';
-    let nearestVehicle = null, nearestVD = 4;
-    for (const v of [state.bike, state.car]) {
-      if (state.mounts[state.currentChar] === v) continue;            // already in
-      if (v === state.bike && state.mounts[otherChar] === v) continue; // bike taken
-      const d = Math.hypot(v.position.x - rig.position.x, v.position.z - rig.position.z);
-      if (d < nearestVD) { nearestVD = d; nearestVehicle = v; }
+  // Food-truck prompt has top priority on foot
+  if (mode === 'foot' && state.foodTruck) {
+    const ftDx = state.foodTruck.position.x - rig.position.x;
+    const ftDz = state.foodTruck.position.z - rig.position.z;
+    if (ftDx * ftDx + ftDz * ftDz < 25) {
+      hintText = `Appuie sur <span class="key">E</span> pour prendre une pizza 🍕`;
     }
-    if (nearestVehicle) {
-      let what;
-      if (nearestVehicle === state.bike) {
-        what = 'le vélo 🚲';
-      } else if (state.mounts[otherChar] === state.car) {
-        const otherName = otherChar === 'peppa' ? 'Peppa' : 'Papa';
-        what = `la voiture 🚗 avec ${otherName}`;
-      } else {
-        what = 'la voiture 🚗';
+  }
+  if (!hintText) {
+    if (mode === 'foot') {
+      const otherChar = state.currentChar === 'peppa' ? 'papa' : 'peppa';
+      let nearestVehicle = null, nearestVD = 4;
+      for (const v of [state.bike, state.car]) {
+        if (state.mounts[state.currentChar] === v) continue;
+        if (v === state.bike && state.mounts[otherChar] === v) continue;
+        const d = Math.hypot(v.position.x - rig.position.x, v.position.z - rig.position.z);
+        if (d < nearestVD) { nearestVD = d; nearestVehicle = v; }
       }
-      hintText = `Appuie sur <span class="key">F</span> pour monter dans ${what}`;
-    } else if (nearestEntranceDist < 5 && !anyInside) {
-      hintText = `Entre par la porte 🚪`;
-    }
-  } else {
-    if (nearestEntranceDist < 7 && !anyInside) {
-      hintText = `<span class="key">F</span> pour descendre et entrer 🚪`;
+      if (nearestVehicle) {
+        let what;
+        if (nearestVehicle === state.bike) {
+          what = 'le vélo 🚲';
+        } else if (state.mounts[otherChar] === state.car) {
+          const otherName = otherChar === 'peppa' ? 'Peppa' : 'Papa';
+          what = `la voiture 🚗 avec ${otherName}`;
+        } else {
+          what = 'la voiture 🚗';
+        }
+        hintText = `Appuie sur <span class="key">F</span> pour monter dans ${what}`;
+      } else if (nearestEntranceDist < 5 && !anyInside) {
+        hintText = `Entre par la porte 🚪`;
+      }
+    } else {
+      if (nearestEntranceDist < 7 && !anyInside) {
+        hintText = `<span class="key">F</span> pour descendre et entrer 🚪`;
+      }
     }
   }
   setHint(hintText);

@@ -66,6 +66,25 @@ export function playSplash() {
   src.start();
 }
 
+export function playEat() {
+  const ctx = getAudio(); if (!ctx) return;
+  const t = ctx.currentTime;
+  // two short bites
+  for (let i = 0; i < 2; i++) {
+    const t0 = t + i * 0.15;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(160 + i * 40, t0);
+    osc.frequency.exponentialRampToValueAtTime(90, t0 + 0.1);
+    gain.gain.setValueAtTime(0.001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.13);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0); osc.stop(t0 + 0.15);
+  }
+}
+
 export function playWin() {
   const ctx = getAudio(); if (!ctx) return;
   const notes = [523, 659, 784, 1047];

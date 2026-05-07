@@ -5,6 +5,7 @@ export const ui = {
   exhibitEl:    document.getElementById('exhibit-panel'),
   hintEl:       document.getElementById('hint'),
   titleEl:      document.getElementById('ui-title'),
+  pizzaEl:      document.getElementById('pizza-counter'),
   startOverlay: document.getElementById('start-overlay'),
 };
 
@@ -31,4 +32,9 @@ export function setHint(html) {
 export function setExhibit(text) {
   if (text) { ui.exhibitEl.textContent = text; ui.exhibitEl.style.display = 'block'; }
   else      { ui.exhibitEl.style.display = 'none'; }
+}
+
+export function setPizzaCount(n) {
+  ui.pizzaEl.innerHTML = `🍕 <b>${n}</b>`;
+  ui.pizzaEl.style.display = n > 0 ? 'block' : 'none';
 }
