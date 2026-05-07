@@ -7,6 +7,11 @@ import {
   matWhite, matYellow, makeTextSign,
 } from './setup.js';
 import { createSheep, createGrannyPig, createGrandpaPig } from './actors/friends.js';
+import { createDuck } from './actors/duck.js';
+import { createSchoolBus } from './actors/schoolbus.js';
+import { createMrBull, createConstructionSite } from './actors/mrbull.js';
+import { createSnowman } from './actors/snowman.js';
+import { setSnowman } from './seasons.js';
 import { colliders } from './physics.js';
 
 // ---- Ground & road ----
@@ -129,11 +134,12 @@ function isTreeSpotFree(x, z) {
   const ldx = x - (-55), ldz = z - 10;
   if (ldx * ldx + ldz * ldz < 100) return false;                   // lake
   if (x > -32 && x < -22 && z < -72 && z > -82) return false;     // garden
-  // train track ring (center 60,0 radius 22 ± 2)
   const trdx = x - 60, trdz = z;
   const trd = Math.sqrt(trdx * trdx + trdz * trdz);
   if (trd > 19 && trd < 25) return false;                          // train track
   if (x > -34 && x < -25 && z > 86 && z < 95) return false;       // birthday party
+  if (x > -45 && x < -32 && z > -62 && z < -48) return false;     // construction site
+  if (x > -25 && x < -18 && z > -86 && z < -78) return false;     // snowman area
   return true;
 }
 let placed = 0;
@@ -653,3 +659,102 @@ partyZone.userData.label = '🎂 Joyeux anniversaire ! 🎉';
 partyZone.userData.zoneRadius = 4;
 scene.add(partyZone);
 npcs.push(partyZone);  // reuse npcs array for outdoor labels (no lookAt issue, it's an Object3D)
+
+// ---- Ducks circling on the lake ----
+export const ducks = [];
+for (let i = 0; i < 3; i++) {
+  const duck = createDuck();
+  duck.userData.angle = (i / 3) * Math.PI * 2;
+  duck.userData.radius = 3.5 + i * 0.7;
+  duck.userData.speed = 0.35 + Math.random() * 0.2;
+  duck.position.set(
+    LAKE_X + Math.cos(duck.userData.angle) * duck.userData.radius,
+    0.4,
+    LAKE_Z + Math.sin(duck.userData.angle) * duck.userData.radius,
+  );
+  scene.add(duck);
+  ducks.push(duck);
+}
+
+// ---- School bus driving back-and-forth on the road ----
+export const schoolBus = createSchoolBus();
+schoolBus.position.set(3, 0, -55);
+schoolBus.rotation.y = 0;
+schoolBus.userData.dir = 1; // 1 = north, -1 = south
+scene.add(schoolBus);
+
+// ---- Mr Bull at his construction site (west of road, mid-south) ----
+const SITE_X = -38, SITE_Z = -55;
+const site = createConstructionSite();
+site.position.set(SITE_X, 0, SITE_Z);
+scene.add(site);
+const mrBull = createMrBull();
+mrBull.position.set(SITE_X + 1, 0, SITE_Z - 1);
+mrBull.rotation.y = -0.5;
+mrBull.userData.label = '🐂 Mr Bull : « Y\'a du boulot par ici, hein ! »';
+mrBull.userData.zoneRadius = 4;
+scene.add(mrBull);
+npcs.push(mrBull);
+colliders.push({ minX: SITE_X - 3, maxX: SITE_X + 3, minZ: SITE_Z - 3, maxZ: SITE_Z + 3 });
+
+// ---- Snowman near the house (visibility toggled by seasons.js) ----
+const snowman = createSnowman();
+snowman.position.set(-21, 0, -82);
+snowman.rotation.y = -0.4;
+scene.add(snowman);
+setSnowman(snowman);
+snowman.userData.label = '⛄ Bonhomme de neige : « Brrr… ! »';
+snowman.userData.zoneRadius = 3;
+npcs.push(snowman);
+
+// ============================================================
+// Centralised world animation tick (called from main.js each frame)
+// ============================================================
+const TRACK_CENTER = train.userData.center;
+const TRACK_RADIUS = train.userData.radius;
+
+export function updateWorldAnimations(dt) {
+  // Sky balloon drift
+  balloon.position.x += dt * 1.4;
+  balloon.position.y = 28 + Math.sin(performance.now() * 0.0006) * 1.5;
+  if (balloon.position.x > 110) balloon.position.x = -110;
+
+  // Train around its loop
+  train.userData.angle -= dt * 0.35;
+  const a = train.userData.angle;
+  train.position.x = TRACK_CENTER.x + Math.cos(a) * TRACK_RADIUS;
+  train.position.z = TRACK_CENTER.z + Math.sin(a) * TRACK_RADIUS;
+  train.rotation.y = Math.PI - a;
+  if (train.userData.smoke) {
+    const s = train.userData.smoke;
+    s.scale.setScalar(0.7 + Math.sin(performance.now() * 0.005) * 0.25);
+    s.material.opacity = 0.35 + Math.sin(performance.now() * 0.005) * 0.3;
+  }
+
+  // Ducks
+  for (const d of ducks) {
+    d.userData.angle += d.userData.speed * dt;
+    d.position.x = LAKE_X + Math.cos(d.userData.angle) * d.userData.radius;
+    d.position.z = LAKE_Z + Math.sin(d.userData.angle) * d.userData.radius;
+    d.position.y = 0.45 + Math.sin(performance.now() * 0.003 + d.userData.angle) * 0.03;
+    d.rotation.y = -d.userData.angle - Math.PI / 2;
+  }
+
+  // School bus back-and-forth on the road
+  schoolBus.position.z += schoolBus.userData.dir * 5 * dt;
+  if (schoolBus.position.z > 80) {
+    schoolBus.userData.dir = -1; schoolBus.rotation.y = Math.PI;
+  } else if (schoolBus.position.z < -65) {
+    schoolBus.userData.dir = 1; schoolBus.rotation.y = 0;
+  }
+
+  // Birthday balloons + flickering candles
+  for (const b of party.userData.balloons) {
+    const wave = Math.sin(performance.now() * 0.001 + b.userData.phase) * 0.25;
+    b.position.y = b.userData.baseY + wave;
+    b.userData.string.position.y = b.position.y - 0.85;
+  }
+  for (const f of party.userData.flames) {
+    f.scale.setScalar(0.85 + Math.sin(performance.now() * 0.012 + f.position.x * 100) * 0.25);
+  }
+}
