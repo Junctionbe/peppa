@@ -20,3 +20,12 @@ export function wasJustPressed(code) {
 export function clearJustPressed() {
   justPressed.clear();
 }
+
+// Virtual key press/release used by the touch UI (action buttons).
+export function virtualPress(code) {
+  if (!keys[code]) justPressed.add(code);
+  keys[code] = true;
+}
+export function virtualRelease(code) {
+  keys[code] = false;
+}

@@ -165,3 +165,86 @@ canvas { display: block; }
   max-width: 480px;
   line-height: 1.5;
 }
+
+/* ===== Touch UI (mobile / tablet) ===== */
+.touch-only { display: none; }
+@media (pointer: coarse) {
+  .touch-only { display: block; }
+  /* Slim down panels so they don't eat the small screen */
+  #ui {
+    font-size: 11px;
+    max-width: 200px;
+    padding: 8px 12px;
+    line-height: 1.35;
+  }
+  #ui h2 { font-size: 14px; margin-bottom: 4px; }
+  #ui hr { margin: 4px 0; }
+  #counters > div { font-size: 14px; padding: 6px 12px; }
+  #counters > div b { font-size: 16px; }
+  /* Lift bottom panels above the touch controls */
+  #exhibit-panel { bottom: 215px; font-size: 14px; padding: 10px 18px; max-width: 65%; }
+  #hint          { bottom: 295px; font-size: 13px; }
+  /* Stack the start-overlay choices vertically on small screens */
+  #start-overlay h1 { font-size: 24px; }
+  #start-overlay .choices { flex-direction: column; gap: 14px; }
+  .choice { font-size: 18px; min-width: 220px; padding: 14px 22px; }
+  .choice .emoji { font-size: 38px; }
+}
+
+#joystick {
+  position: absolute;
+  bottom: 30px; left: 30px;
+  width: 130px; height: 130px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+  border: 4px solid rgba(255, 255, 255, 0.55);
+  touch-action: none;
+  z-index: 5;
+}
+#joystick-knob {
+  position: absolute;
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  border: 3px solid rgba(0, 0, 0, 0.2);
+}
+#touch-buttons {
+  position: absolute;
+  bottom: 30px; right: 30px;
+  display: grid;
+  grid-template-columns: 75px 75px;
+  grid-template-rows: 75px 75px;
+  gap: 12px;
+  z-index: 5;
+}
+.touch-btn {
+  border-radius: 50%;
+  background: rgba(255, 230, 240, 0.92);
+  border: 4px solid #e91e63;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-family: 'Comic Sans MS', 'Comic Neue', cursive;
+  font-size: 26px;
+  color: #c2185b;
+  font-weight: bold;
+  padding: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  width: 75px; height: 75px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+}
+.touch-btn span {
+  font-size: 9px;
+  margin-top: 1px;
+  letter-spacing: 0.5px;
+  font-weight: bold;
+}
+.touch-btn:active {
+  background: rgba(255, 150, 200, 0.95);
+  transform: scale(0.95);
+}

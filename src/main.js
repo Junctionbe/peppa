@@ -32,6 +32,7 @@ import { applyCameraFollow, resetCameraOffset } from './camera.js';
 import { updateDayNight }   from './daynight.js';
 import { toggleRain, updateWeather } from './weather.js';
 import { updateSeason }     from './seasons.js';
+import { joystick }         from './touch.js';
 
 import { createPeppa }                         from './actors/peppa.js';
 import { createPapa }                          from './actors/papa.js';
@@ -225,14 +226,16 @@ function tick() {
   const rig    = activeRig();
   const mode   = activeMode();
 
+  // ---- combined keyboard + joystick movement input ----
+  const fwd   = keys['ArrowUp']    || keys['KeyW'] || keys['KeyZ'] || joystick.y >  0.3;
+  const back  = keys['ArrowDown']  || keys['KeyS']                 || joystick.y < -0.3;
+  const left  = keys['ArrowLeft']  || keys['KeyA'] || keys['KeyQ'] || joystick.x < -0.3;
+  const right = keys['ArrowRight'] || keys['KeyD']                 || joystick.x >  0.3;
+
   // ---- throttle ----
   let throttling = false;
-  if (keys['ArrowUp']   || keys['KeyW'] || keys['KeyZ']) {
-    state.speed = Math.min(state.speed + params.accel * dt,  params.maxSpeed); throttling = true;
-  }
-  if (keys['ArrowDown'] || keys['KeyS']) {
-    state.speed = Math.max(state.speed - params.accel * dt, -params.maxSpeed * 0.5); throttling = true;
-  }
+  if (fwd)  { state.speed = Math.min(state.speed + params.accel * dt,  params.maxSpeed); throttling = true; }
+  if (back) { state.speed = Math.max(state.speed - params.accel * dt, -params.maxSpeed * 0.5); throttling = true; }
   if (!throttling) {
     if (state.speed > 0) state.speed = Math.max(0, state.speed - params.friction * dt);
     else                 state.speed = Math.min(0, state.speed + params.friction * dt);
@@ -241,15 +244,15 @@ function tick() {
   // ---- turn ----
   let steerInput = 0;
   if (mode === 'foot') {
-    if (keys['ArrowLeft']  || keys['KeyA'] || keys['KeyQ']) { state.heading += params.turn * dt; steerInput = -1; }
-    if (keys['ArrowRight'] || keys['KeyD'])                 { state.heading -= params.turn * dt; steerInput =  1; }
+    if (left)  { state.heading += params.turn * dt; steerInput = -1; }
+    if (right) { state.heading -= params.turn * dt; steerInput =  1; }
   } else if (Math.abs(state.speed) > 0.05) {
     const dir = state.speed >= 0 ? 1 : -1;
-    if (keys['ArrowLeft']  || keys['KeyA'] || keys['KeyQ']) { state.heading += params.turn * dt * dir; steerInput = -1; }
-    if (keys['ArrowRight'] || keys['KeyD'])                 { state.heading -= params.turn * dt * dir; steerInput =  1; }
+    if (left)  { state.heading += params.turn * dt * dir; steerInput = -1; }
+    if (right) { state.heading -= params.turn * dt * dir; steerInput =  1; }
   } else {
-    if (keys['ArrowLeft']  || keys['KeyA'] || keys['KeyQ']) steerInput = -1;
-    if (keys['ArrowRight'] || keys['KeyD'])                 steerInput =  1;
+    if (left)  steerInput = -1;
+    if (right) steerInput =  1;
   }
 
   // ---- move ----

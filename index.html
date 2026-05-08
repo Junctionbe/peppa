@@ -2,6 +2,9 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>🐷 Peppa & Papa Pig - Aventure</title>
 <link rel="stylesheet" href="./style.css">
 </head>
@@ -35,6 +38,18 @@
 <div id="exhibit-panel"></div>
 <div id="hint"></div>
 <div id="message"></div>
+
+<div id="touch-controls" class="touch-only">
+  <div id="joystick">
+    <div id="joystick-knob"></div>
+  </div>
+  <div id="touch-buttons">
+    <button class="touch-btn" data-key="KeyF">🚲<span>MONTER</span></button>
+    <button class="touch-btn" data-key="Space">⬆<span>ACTION</span></button>
+    <button class="touch-btn" data-key="KeyC">🔄<span>HÉROS</span></button>
+    <button class="touch-btn" data-key="KeyE">🍕<span>MIAM</span></button>
+  </div>
+</div>
 
 <div id="start-overlay">
   <h1>🐷 Choisis ton héros ! 🐽</h1>

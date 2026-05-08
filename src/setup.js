@@ -6,11 +6,15 @@ scene.fog = new THREE.Fog(0xb3e0ff, 100, 280);
 
 export const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
 
-export const renderer = new THREE.WebGLRenderer({ antialias: true });
+// Detect a touch / coarse-pointer device once so we can lower a few graphics
+// knobs to keep the framerate happy on phones.
+const isMobile = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
+
+export const renderer = new THREE.WebGLRenderer({ antialias: !isMobile });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = isMobile ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 window.addEventListener('resize', () => {
@@ -27,7 +31,7 @@ sun.castShadow = true;
 sun.shadow.camera.left = -110; sun.shadow.camera.right = 110;
 sun.shadow.camera.top = 110;   sun.shadow.camera.bottom = -110;
 sun.shadow.camera.near = 1;    sun.shadow.camera.far = 230;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(isMobile ? 1024 : 2048, isMobile ? 1024 : 2048);
 scene.add(sun);
 
 // shared materials
