@@ -11,10 +11,12 @@ if (!state.questsCompleted)   state.questsCompleted   = new Set();
 if (!state.visitedBuildings)  state.visitedBuildings  = new Set();
 
 const QUESTS = [
+  { id: 'stars10',  text: 'Trouve 10 étoiles',         icon: '⭐', target: 10, get: () => state.starsCollected },
   { id: 'visit',    text: 'Visite tous les bâtiments', icon: '🏛️', target: 4, get: () => state.visitedBuildings.size },
   { id: 'pizzas',   text: 'Mange 3 pizzas',            icon: '🍕', target: 3, get: () => state.pizzasEaten },
   { id: 'icecream', text: 'Mange 2 glaces',            icon: '🍦', target: 2, get: () => state.icecreamsEaten },
   { id: 'puddles',  text: 'Saute dans 5 flaques',      icon: '💦', target: 5, get: () => state.puddleJumps },
+  { id: 'stars25',  text: 'Trouve 25 étoiles',         icon: '🌟', target: 25, get: () => state.starsCollected },
 ];
 
 export function getQuests() {

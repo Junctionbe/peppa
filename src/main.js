@@ -37,6 +37,11 @@ import { POSITIONS }        from './config.js';
 import { loadSave, refreshUIFromState, startAutoSave } from './save.js';
 import { refreshQuestUI, checkQuests, markBuildingVisited } from './quests.js';
 import { spawnConfetti, updateConfetti } from './effects/confetti.js';
+import { spawnStars, updateStars, setOnCollect as setStarOnCollect } from './effects/stars.js';
+import { spawnBoostPads, updateBoostPads } from './effects/boostpads.js';
+import { spawnRamps, updateRamps } from './effects/ramps.js';
+import { updateGifts, setOnCollect as setGiftOnCollect } from './effects/gifts.js';
+import { setStarCount } from './ui.js';
 
 import { createPeppa }                         from './actors/peppa.js';
 import { createPapa }                          from './actors/papa.js';
@@ -110,6 +115,27 @@ loadSave();
 refreshUIFromState();
 refreshQuestUI();
 startAutoSave();
+
+// ---- Spawn collectibles & track decorations ----
+spawnStars(30);
+spawnBoostPads();
+spawnRamps();
+
+setStarOnCollect((pos) => {
+  state.starsCollected++;
+  setStarCount(state.starsCollected);
+  audio.playBell();
+  spawnConfetti(pos.x, pos.y, pos.z, 8);
+  checkQuests(activeRig().position);
+});
+
+setGiftOnCollect((pos) => {
+  state.starsCollected += 5;
+  setStarCount(state.starsCollected);
+  audio.playWin();
+  spawnConfetti(pos.x, pos.y + 0.5, pos.z, 50);
+  checkQuests(activeRig().position);
+});
 
 // ============================================================
 // Start overlay (audio context resumes on the first user click)
@@ -247,9 +273,11 @@ function tick() {
   const left  = keys['ArrowLeft']  || keys['KeyA'] || keys['KeyQ'] || joystick.x < -0.3;
   const right = keys['ArrowRight'] || keys['KeyD']                 || joystick.x >  0.3;
 
-  // ---- throttle ----
+  // ---- throttle (boost pad multiplies max speed + accel for a few seconds) ----
+  if (state.boostTimer > 0) state.boostTimer -= dt;
+  const boostMult = state.boostTimer > 0 ? 1.7 : 1;
   let throttling = false;
-  if (fwd)  { state.speed = Math.min(state.speed + params.accel * dt,  params.maxSpeed); throttling = true; }
+  if (fwd)  { state.speed = Math.min(state.speed + params.accel * dt * boostMult,  params.maxSpeed * boostMult); throttling = true; }
   if (back) { state.speed = Math.max(state.speed - params.accel * dt, -params.maxSpeed * 0.5); throttling = true; }
   if (!throttling) {
     if (state.speed > 0) state.speed = Math.max(0, state.speed - params.friction * dt);
@@ -280,15 +308,11 @@ function tick() {
   rig.position.z = Math.max(-100, Math.min(115, rig.position.z));
   applyCollisions(rig.position, params.radius);
 
-  // ---- jump (foot only) ----
-  if (mode === 'foot') {
-    state.jumpY  += state.jumpVel * dt;
-    state.jumpVel -= 12 * dt;
-    if (state.jumpY <= 0) { state.jumpY = 0; state.jumpVel = 0; }
-    rig.position.y = state.jumpY;
-  } else {
-    rig.position.y = 0;
-  }
+  // ---- jump physics (foot mode: Space jumps; vehicle mode: ramps launch) ----
+  state.jumpY  += state.jumpVel * dt;
+  state.jumpVel -= 12 * dt;
+  if (state.jumpY <= 0) { state.jumpY = 0; state.jumpVel = 0; }
+  rig.position.y = state.jumpY;
 
   // ---- mode-specific animations ----
   if (mode === 'bike') {
@@ -381,19 +405,31 @@ function tick() {
   updateSeason(dt);
   updateConfetti(dt);
 
+  // ---- collectibles & boost ----
+  updateStars(dt, rig.position);
+  updateBoostPads(dt, rig.position);
+  updateRamps(dt, rig.position);
+  updateGifts(dt, rig.position);
+
   // ---- clouds drift ----
   for (const c of clouds) {
     c.position.x += dt * 0.6;
     if (c.position.x > 160) c.position.x = -160;
   }
 
-  // ---- NPCs face the player ----
+  // ---- NPCs face the player + bounce when close ----
   for (const f of allNpcs) {
     f.getWorldPosition(tmpVec);
     const dx = rig.position.x - tmpVec.x;
     const dz = rig.position.z - tmpVec.z;
-    if (dx * dx + dz * dz < 600) {
-      f.lookAt(rig.position.x, tmpVec.y, rig.position.z);
+    const dist2 = dx * dx + dz * dz;
+    if (dist2 < 600) f.lookAt(rig.position.x, tmpVec.y, rig.position.z);
+    // Excited bounce when the player gets really close (within ~4m)
+    if (!('baseY' in f.userData)) f.userData.baseY = f.position.y;
+    if (dist2 < 16) {
+      f.position.y = f.userData.baseY + Math.abs(Math.sin(performance.now() * 0.008 + tmpVec.x)) * 0.25;
+    } else {
+      f.position.y = f.userData.baseY;
     }
   }
   if (state.school.userData.flag) {

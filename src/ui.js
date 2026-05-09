@@ -9,6 +9,7 @@ export const ui = {
   pizzaEl:      document.getElementById('pizza-counter'),
   icecreamEl:   document.getElementById('icecream-counter'),
   puddleEl:     document.getElementById('puddle-counter'),
+  starEl:       document.getElementById('star-counter'),
   questsEl:     document.getElementById('quests-list'),
   startOverlay: document.getElementById('start-overlay'),
 };
@@ -62,6 +63,12 @@ export function setIceCreamCount(n) {
 export function setPuddleCount(n) {
   ui.puddleEl.innerHTML = `💦 <b>${n}</b>`;
   ui.puddleEl.style.display = n > 0 ? 'block' : 'none';
+}
+
+export function setStarCount(n) {
+  if (!ui.starEl) return;
+  ui.starEl.innerHTML = `⭐ <b>${n}</b>`;
+  ui.starEl.style.display = n > 0 ? 'block' : 'none';
 }
 
 export function setQuests(quests) {

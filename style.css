@@ -104,6 +104,7 @@ canvas { display: block; }
   min-width: 60px;
 }
 #counters > div b { font-size: 24px; }
+#star-counter     { border: 3px solid #ffd54f; color: #f57f17; }
 #pizza-counter    { border: 3px solid #ff8a65; color: #bf360c; }
 #icecream-counter { border: 3px solid #f48fb1; color: #ad1457; }
 #puddle-counter   { border: 3px solid #6d4c41; color: #4e342e; }

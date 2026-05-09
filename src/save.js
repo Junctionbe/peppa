@@ -2,7 +2,7 @@
 // scores again next time he opens the page.
 
 import { state } from './state.js';
-import { setPizzaCount, setIceCreamCount, setPuddleCount } from './ui.js';
+import { setPizzaCount, setIceCreamCount, setPuddleCount, setStarCount } from './ui.js';
 
 const KEY = 'peppa-save-v1';
 
@@ -14,6 +14,7 @@ export function loadSave() {
     if (typeof data.pizzasEaten    === 'number') state.pizzasEaten    = data.pizzasEaten;
     if (typeof data.icecreamsEaten === 'number') state.icecreamsEaten = data.icecreamsEaten;
     if (typeof data.puddleJumps    === 'number') state.puddleJumps    = data.puddleJumps;
+    if (typeof data.starsCollected === 'number') state.starsCollected = data.starsCollected;
     if (Array.isArray(data.questsCompleted))     state.questsCompleted    = new Set(data.questsCompleted);
     if (Array.isArray(data.visitedBuildings))    state.visitedBuildings   = new Set(data.visitedBuildings);
   } catch (_) { /* corrupt save → ignore */ }
@@ -23,6 +24,7 @@ export function refreshUIFromState() {
   if (state.pizzasEaten    > 0) setPizzaCount(state.pizzasEaten);
   if (state.icecreamsEaten > 0) setIceCreamCount(state.icecreamsEaten);
   if (state.puddleJumps    > 0) setPuddleCount(state.puddleJumps);
+  if (state.starsCollected > 0) setStarCount(state.starsCollected);
 }
 
 export function saveSave() {
@@ -31,6 +33,7 @@ export function saveSave() {
       pizzasEaten:      state.pizzasEaten,
       icecreamsEaten:   state.icecreamsEaten,
       puddleJumps:      state.puddleJumps,
+      starsCollected:   state.starsCollected,
       questsCompleted:  state.questsCompleted ? [...state.questsCompleted] : [],
       visitedBuildings: state.visitedBuildings ? [...state.visitedBuildings] : [],
     }));

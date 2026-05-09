@@ -29,6 +29,10 @@ export const state = {
   puddleJumps: 0,
   splashes: [],
 
+  // collectibles
+  starsCollected: 0,
+  boostTimer: 0,         // seconds remaining of speed boost
+
   // quest progress (persisted)
   questsCompleted:  new Set(),
   visitedBuildings: new Set(),
