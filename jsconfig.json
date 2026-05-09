@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "checkJs": false,
+    "allowJs": true,
+    "strict": false,
+    "lib": ["es2022", "dom"]
+  },
+  "include": ["src/**/*.js", "vite.config.js"],
+  "exclude": ["node_modules", "dist"]
+}

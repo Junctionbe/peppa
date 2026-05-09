@@ -11,23 +11,26 @@
 <body>
 
 <div id="ui">
-  <h2 id="ui-title">🐷 Peppa à vélo</h2>
-  <div id="ui-sub">Visite la maison 🏠, le musée 🏛️ et l'école 🏫 !</div>
-  <hr>
-  <div><span class="key">↑</span> <span class="key">↓</span> &nbsp;avancer / reculer</div>
-  <div><span class="key">←</span> <span class="key">→</span> &nbsp;tourner</div>
-  <div><span class="key">F</span> &nbsp;monter / descendre</div>
-  <div><span class="key">C</span> &nbsp;changer de héros</div>
-  <div><span class="key">Espace</span> &nbsp;cloche / klaxon / saut</div>
-  <div><span class="key">E</span> &nbsp;manger pizza 🍕 / glace 🍦</div>
-  <div><span class="key">M</span> &nbsp;musique on/off 🎵</div>
-  <div><span class="key">P</span> &nbsp;pluie on/off 🌧️</div>
-  <hr>
-  <div>🖱️ <b>clic + glisser</b> &nbsp;tourner caméra</div>
-  <div>🖲️ <b>molette</b> &nbsp;zoomer</div>
-  <div><span class="key">R</span> &nbsp;recentrer caméra</div>
-  <hr>
-  <div style="font-size:12px;color:#ad1457">Attention aux flaques 💦 et aux murs !</div>
+  <h2 id="ui-title">🐷 Peppa à vélo<span id="ui-toggle">▾</span></h2>
+  <div class="ui-body">
+    <div id="ui-sub">Visite la maison 🏠, le musée 🏛️ et l'école 🏫 !</div>
+    <hr>
+    <div><span class="key">↑</span> <span class="key">↓</span> &nbsp;avancer / reculer</div>
+    <div><span class="key">←</span> <span class="key">→</span> &nbsp;tourner</div>
+    <div><span class="key">F</span> &nbsp;monter / descendre</div>
+    <div><span class="key">C</span> &nbsp;changer de héros</div>
+    <div><span class="key">Espace</span> &nbsp;cloche / klaxon / saut</div>
+    <div><span class="key">E</span> &nbsp;manger pizza 🍕 / glace 🍦</div>
+    <div><span class="key">M</span> &nbsp;musique on/off 🎵</div>
+    <div><span class="key">P</span> &nbsp;pluie on/off 🌧️</div>
+    <hr>
+    <div>🖱️ <b>clic + glisser</b> &nbsp;tourner caméra</div>
+    <div>🖲️ <b>molette</b> &nbsp;zoomer</div>
+    <div><span class="key">R</span> &nbsp;recentrer caméra</div>
+    <hr>
+    <div class="quests-title">🎯 Quêtes</div>
+    <div id="quests-list"></div>
+  </div>
 </div>
 
 <div id="counters">

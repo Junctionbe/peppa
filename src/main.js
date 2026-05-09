@@ -33,6 +33,10 @@ import { updateDayNight }   from './daynight.js';
 import { toggleRain, updateWeather } from './weather.js';
 import { updateSeason }     from './seasons.js';
 import { joystick }         from './touch.js';
+import { POSITIONS }        from './config.js';
+import { loadSave, refreshUIFromState, startAutoSave } from './save.js';
+import { refreshQuestUI, checkQuests, markBuildingVisited } from './quests.js';
+import { spawnConfetti, updateConfetti } from './effects/confetti.js';
 
 import { createPeppa }                         from './actors/peppa.js';
 import { createPapa }                          from './actors/papa.js';
@@ -55,10 +59,14 @@ state.bike  = createBike();
 state.car   = createCar();
 scene.add(state.peppa, state.papa, state.bike, state.car);
 
-state.house  = createHouse(-15, -90); scene.add(state.house);
-state.school = createSchool(15, 95);  scene.add(state.school);
-state.museum = createMuseum(-12, 35); scene.add(state.museum);
-state.hotel  = createHotel(25, 50);   scene.add(state.hotel);
+state.house  = createHouse(POSITIONS.house.x,  POSITIONS.house.z);  scene.add(state.house);
+state.school = createSchool(POSITIONS.school.x, POSITIONS.school.z); scene.add(state.school);
+state.museum = createMuseum(POSITIONS.museum.x, POSITIONS.museum.z); scene.add(state.museum);
+state.hotel  = createHotel(POSITIONS.hotel.x,   POSITIONS.hotel.z);  scene.add(state.hotel);
+state.house.userData.name  = 'house';
+state.school.userData.name = 'school';
+state.museum.userData.name = 'museum';
+state.hotel.userData.name  = 'hotel';
 
 const enterables = [state.house, state.museum, state.school, state.hotel];
 const allNpcs = [...outdoorNpcs];
@@ -89,13 +97,19 @@ for (const b of enterables) allNpcs.push(...(b.userData.npcs || []));
 }
 
 // Initial vehicle placement and mounting
-state.bike.position.set(0, 0, -78); state.bike.rotation.y = 0;
-state.car.position.set(3.5, 0, -80); state.car.rotation.y = 0;
+state.bike.position.set(POSITIONS.startPos.x, 0, POSITIONS.startPos.z); state.bike.rotation.y = 0;
+state.car.position.set(POSITIONS.carPark.x, 0, POSITIONS.carPark.z);    state.car.rotation.y = 0;
 mount('peppa', state.bike);
 mount('papa',  state.car);
 
 camera.position.set(0, 4, -85);
 camera.lookAt(0, 1, -78);
+
+// Restore saved state (counters, completed quests, visited buildings)
+loadSave();
+refreshUIFromState();
+refreshQuestUI();
+startAutoSave();
 
 // ============================================================
 // Start overlay (audio context resumes on the first user click)
@@ -148,6 +162,7 @@ function tryEat() {
     setIceCreamCount(state.icecreamsEaten);
   }
   audio.playEat();
+  checkQuests(ch.position);
 }
 
 function spawnSplashParticles(x, z) {
@@ -338,6 +353,7 @@ function tick() {
     setPuddleCount(state.puddleJumps);
     audio.playBigSplash();
     spawnSplashParticles(puddlePos.x, puddlePos.z);
+    checkQuests(rig.position);
   }
   wasInAir = mode === 'foot' && state.jumpY > 0;
   state.lastInPuddle = inPuddle;
@@ -363,6 +379,7 @@ function tick() {
   updateDayNight(dt);
   updateWeather(dt, rig.position);
   updateSeason(dt);
+  updateConfetti(dt);
 
   // ---- clouds drift ----
   for (const c of clouds) {
@@ -396,7 +413,16 @@ function tick() {
       rig.position.z > c.z - c.D / 2 + 0.5 && rig.position.z < c.z + c.D / 2 - 0.5
     );
     b.userData.roof.visible = !inside;
-    if (inside) anyInside = true;
+    if (inside) {
+      anyInside = true;
+      // First time entering this building? Mark visited (with confetti) and
+      // possibly complete the "visit all buildings" quest.
+      if (b.userData.name && !state.visitedBuildings.has(b.userData.name)) {
+        markBuildingVisited(b.userData.name);
+        spawnConfetti(rig.position.x, rig.position.y + 2, rig.position.z, 25);
+        checkQuests(rig.position);
+      }
+    }
 
     const entranceZ = c.z + c.doorOffsetZ;
     const distToEntrance = Math.hypot(rig.position.x - c.x, rig.position.z - entranceZ);

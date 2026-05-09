@@ -112,15 +112,9 @@ for (let i = 0; i < 9; i++) {
   addCloud(-120 + Math.random() * 240, 28 + Math.random() * 14, -120 + Math.random() * 240);
 }
 
-// ---- Trees ----
-function createTree() {
-  const t = new THREE.Group();
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 1.6, 8), matBrown);
-  trunk.position.y = 0.8; trunk.castShadow = true; t.add(trunk);
-  const leaves = new THREE.Mesh(new THREE.SphereGeometry(1.4, 12, 10), matLeaf);
-  leaves.position.y = 2.5; leaves.castShadow = true; t.add(leaves);
-  return t;
-}
+// ---- Trees (InstancedMesh: 1 draw call per part instead of 65 groups) ----
+const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 1.6, 8);
+const leafGeo  = new THREE.SphereGeometry(1.4, 12, 10);
 function isTreeSpotFree(x, z) {
   if (Math.abs(x) < 5) return false;                              // road
   if (x > -19 && x < -5  && z > 28 && z < 42) return false;       // museum
@@ -142,30 +136,57 @@ function isTreeSpotFree(x, z) {
   if (x > -25 && x < -18 && z > -86 && z < -78) return false;     // snowman area
   return true;
 }
-let placed = 0;
-while (placed < 65) {
+const TREE_COUNT = 65;
+const trunkInstances = new THREE.InstancedMesh(trunkGeo, matBrown, TREE_COUNT);
+const leafInstances  = new THREE.InstancedMesh(leafGeo,  matLeaf,  TREE_COUNT);
+trunkInstances.castShadow = true;
+leafInstances.castShadow  = true;
+scene.add(trunkInstances);
+scene.add(leafInstances);
+
+const _treePos  = new THREE.Vector3();
+const _treeQuat = new THREE.Quaternion();
+const _treeScl  = new THREE.Vector3();
+const _treeMat  = new THREE.Matrix4();
+const _yAxis    = new THREE.Vector3(0, 1, 0);
+let placed = 0, attempts = 0;
+while (placed < TREE_COUNT && attempts < TREE_COUNT * 30) {
+  attempts++;
   const side = Math.random() < 0.5 ? -1 : 1;
   const x = side * (8 + Math.random() * 80);
   const z = -110 + Math.random() * 220;
   if (!isTreeSpotFree(x, z)) continue;
-  const tree = createTree();
-  tree.position.set(x, 0, z);
-  tree.scale.setScalar(0.8 + Math.random() * 0.7);
-  tree.rotation.y = Math.random() * Math.PI * 2;
-  scene.add(tree);
+  const sc = 0.8 + Math.random() * 0.7;
+  _treeQuat.setFromAxisAngle(_yAxis, Math.random() * Math.PI * 2);
+  _treeScl.set(sc, sc, sc);
+  _treePos.set(x, 0.8 * sc, z);
+  _treeMat.compose(_treePos, _treeQuat, _treeScl);
+  trunkInstances.setMatrixAt(placed, _treeMat);
+  _treePos.set(x, 2.5 * sc, z);
+  _treeMat.compose(_treePos, _treeQuat, _treeScl);
+  leafInstances.setMatrixAt(placed, _treeMat);
   placed++;
 }
+trunkInstances.instanceMatrix.needsUpdate = true;
+leafInstances.instanceMatrix.needsUpdate  = true;
 
-// ---- Flowers ----
+// ---- Flowers (InstancedMesh per color: 6 draw calls instead of 240) ----
 const flowerColors = [0xff5252, 0xffeb3b, 0xe040fb, 0xff80ab, 0xffffff, 0xffa726];
-for (let i = 0; i < 230; i++) {
-  const flower = new THREE.Mesh(
-    new THREE.SphereGeometry(0.16, 6, 5),
-    new THREE.MeshLambertMaterial({ color: flowerColors[Math.floor(Math.random() * flowerColors.length)] }),
-  );
-  const side = Math.random() < 0.5 ? -1 : 1;
-  flower.position.set(side * (5 + Math.random() * 70), 0.16, -100 + Math.random() * 200);
-  scene.add(flower);
+const flowerGeo = new THREE.SphereGeometry(0.16, 6, 5);
+const FLOWERS_PER_COLOR = 40;
+const _flowerMat = new THREE.Matrix4();
+for (const color of flowerColors) {
+  const mat = new THREE.MeshLambertMaterial({ color });
+  const mesh = new THREE.InstancedMesh(flowerGeo, mat, FLOWERS_PER_COLOR);
+  for (let i = 0; i < FLOWERS_PER_COLOR; i++) {
+    const side = Math.random() < 0.5 ? -1 : 1;
+    const x = side * (5 + Math.random() * 70);
+    const z = -100 + Math.random() * 200;
+    _flowerMat.makeTranslation(x, 0.16, z);
+    mesh.setMatrixAt(i, _flowerMat);
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+  scene.add(mesh);
 }
 
 // ---- Puddles ----

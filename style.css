@@ -18,8 +18,26 @@ canvas { display: block; }
   line-height: 1.5;
   max-width: 270px;
 }
-#ui h2 { margin: 0 0 6px; color: #ad1457; font-size: 17px; }
+#ui h2 {
+  margin: 0; color: #ad1457; font-size: 17px;
+  cursor: pointer; user-select: none;
+  display: flex; justify-content: space-between; align-items: center;
+}
+#ui h2 #ui-toggle {
+  font-size: 13px; opacity: 0.75; margin-left: 6px;
+  transition: transform 0.18s;
+}
+#ui.collapsed #ui-toggle { transform: rotate(-90deg); }
+#ui.collapsed .ui-body { display: none; }
+#ui .ui-body { margin-top: 6px; }
 #ui hr { border: none; border-top: 2px dashed #ffb3c6; margin: 7px 0; }
+#ui .quests-title { font-weight: bold; color: #ad1457; margin-bottom: 4px; }
+#ui .quest {
+  font-size: 12px; padding: 2px 0;
+  display: flex; justify-content: space-between; gap: 6px;
+}
+#ui .quest.done { text-decoration: line-through; opacity: 0.55; }
+#ui .quest .progress { font-weight: bold; color: #c2185b; flex-shrink: 0; }
 .key {
   display: inline-block;
   background: #ffd6e4;

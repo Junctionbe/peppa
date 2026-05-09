@@ -2,7 +2,7 @@
 // intensity, plus star visibility.
 
 import * as THREE from 'three';
-import { scene, sun, ambient } from './setup.js';
+import { scene, sun, ambient, matWindow } from './setup.js';
 import { sunVisual, moonVisual, stars } from './world.js';
 
 const DAY_CYCLE_S = 120; // 2 minutes for a full day
@@ -40,6 +40,13 @@ export function updateDayNight(dt) {
   moonVisual.visible = elev < 0.2;
   // Stars
   stars.visible = elev < 0.1;
+  // Building windows: warm yellow glow as the sun goes down
+  const nightAmount = 1 - dayness;
+  matWindow.emissive.setRGB(
+    nightAmount * 0.9,
+    nightAmount * 0.75,
+    nightAmount * 0.3,
+  );
 }
 
 export function getDayTime() { return dayTime; }

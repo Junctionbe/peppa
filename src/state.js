@@ -29,6 +29,10 @@ export const state = {
   puddleJumps: 0,
   splashes: [],
 
+  // quest progress (persisted)
+  questsCompleted:  new Set(),
+  visitedBuildings: new Set(),
+
   // wired by main.js
   peppa: null,
   papa: null,

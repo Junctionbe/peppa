@@ -1,6 +1,7 @@
 // DOM lookups + small helpers to keep the loop free of HTML noise.
 
 export const ui = {
+  panel:        document.getElementById('ui'),
   messageEl:    document.getElementById('message'),
   exhibitEl:    document.getElementById('exhibit-panel'),
   hintEl:       document.getElementById('hint'),
@@ -8,8 +9,20 @@ export const ui = {
   pizzaEl:      document.getElementById('pizza-counter'),
   icecreamEl:   document.getElementById('icecream-counter'),
   puddleEl:     document.getElementById('puddle-counter'),
+  questsEl:     document.getElementById('quests-list'),
   startOverlay: document.getElementById('start-overlay'),
 };
+
+// ---- Help panel collapse / expand ----
+// Tapping the title toggles. Mobile defaults to collapsed.
+if (ui.panel && ui.titleEl) {
+  ui.titleEl.addEventListener('click', () => {
+    ui.panel.classList.toggle('collapsed');
+  });
+  if (matchMedia('(pointer: coarse)').matches) {
+    ui.panel.classList.add('collapsed');
+  }
+}
 
 export function showMessage(text, sub) {
   ui.messageEl.innerHTML = text + (sub ? `<small>${sub}</small>` : '');
@@ -49,4 +62,13 @@ export function setIceCreamCount(n) {
 export function setPuddleCount(n) {
   ui.puddleEl.innerHTML = `💦 <b>${n}</b>`;
   ui.puddleEl.style.display = n > 0 ? 'block' : 'none';
+}
+
+export function setQuests(quests) {
+  if (!ui.questsEl) return;
+  ui.questsEl.innerHTML = quests.map(q => {
+    const status = q.done ? '✅' : `${q.progress}/${q.target}`;
+    const cls = q.done ? 'quest done' : 'quest';
+    return `<div class="${cls}">${q.icon} ${q.text}<span class="progress">${status}</span></div>`;
+  }).join('');
 }
